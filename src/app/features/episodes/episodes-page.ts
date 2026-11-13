@@ -115,7 +115,7 @@ export class EpisodesPage {
         return SEASON_MONTHS.filter((m) => base.some((e) => e['month'] === m)).map((month) => ({ month, label: MONTHS[month - 1] }));
     });
 
-    protected readonly calCurrent = computed(() => this.calMonths().find((m) => m.month === this.calMonth()) ?? this.calMonths()[0] ?? null);
+    protected readonly calCurrent = computed<{ month: number; label: string } | null>(() => this.calMonths().find((m) => m.month === this.calMonth()) ?? this.calMonths()[0] ?? null);
 
     /** 4 semanas × 7 dias (segunda a domingo): o mês do jogo sempre tem 4 semanas. */
     protected readonly calRows = computed<Entity[][][]>(() => {

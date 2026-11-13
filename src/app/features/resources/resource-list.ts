@@ -200,10 +200,31 @@ export class ResourceList {
         if (changed) {
             this.refs.invalidate(key);
             // desativar brand mexe nos shows (e nos episódios)
-            if (key === 'brands') this.refs.invalidate('shows');
+            if (key === 'brands') {
+                this.refs.invalidate('shows');
+                this.refs.invalidate('card-divisions');
+            }
             this.toast.add({ severity: 'success', summary: active ? 'Ativado' : 'Desativado', life: 2500 });
         }
         await this.load(); // recarrega também quando cancelado (volta o switch)
+    }
+
+    /** Cadastra o histórico de reinados padrão (tabela de estatísticas por título). */
+    protected async importHistory() {
+        try {
+            const r = await this.api.post<{ created: number; skipped: number; wrestlersCreated: number; teamsCreated: number }>('title-baselines/defaults');
+            this.refs.invalidate('wrestlers');
+            this.refs.invalidate('teams');
+            const extra = r.wrestlersCreated || r.teamsCreated ? ` (${r.wrestlersCreated} lutadores e ${r.teamsCreated} duplas históricos criados como inativos)` : '';
+            this.toast.add({
+                severity: r.created ? 'success' : 'info',
+                summary: r.created ? `${r.created} históricos importados${extra}` : 'Nada novo: o histórico padrão já está cadastrado',
+                life: 6000
+            });
+            await this.load();
+        } catch {
+            /* erro exibido pelo interceptor */
+        }
     }
 
     protected async generate() {

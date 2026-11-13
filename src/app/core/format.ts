@@ -75,3 +75,15 @@ export function gameDayOffset(e: EpisodeLike): number {
 }
 
 export const gameDayName = (e: EpisodeLike) => GAME_WEEKDAYS[gameDayOffset(e)];
+
+/** "Final", "Semifinal", "Quartas de final"... (eliminatória) ou o nome do grupo. Igual ao backend. */
+export function roundTitle(t: { format: string; size: number }, m: { round: number; groupName?: string | null }): string {
+  if (t.format === 'ROUND_ROBIN') return m.groupName ?? 'Fase de grupos';
+  const left = Math.round(Math.log2(t.size)) - m.round;
+  return left === 0 ? 'Final' : left === 1 ? 'Semifinal' : left === 2 ? 'Quartas de final' : `Rodada ${m.round}`;
+}
+
+/** Rótulo de um episódio: "RAW · Agosto · semana 1 · Noite 2". */
+export function episodeText(e: { month: number; week: number | null; night?: number | null; show?: { name?: string } | null }): string {
+  return [e.show?.name ?? 'Episódio', MONTHS[e.month - 1], e.week ? `semana ${e.week}` : '', e.night ? `Noite ${e.night}` : ''].filter(Boolean).join(' · ');
+}

@@ -31,8 +31,14 @@
                             @if (s.title) {
                                 <p-tag severity="warn" [value]="s.title['name'] + (s.titleChanged ? ' · novo campeão' : '')" icon="pi pi-trophy" />
                             }
+                            @if (tournamentLabel(s); as tl) {
+                                <p-tag severity="warn" [value]="tl" icon="pi pi-sitemap" />
+                            }
                             @if (stakesLabel(s); as st) {
                                 <p-tag severity="info" [value]="st" icon="pi pi-list-check" />
+                            }
+                            @if (s.isDraw) {
+                                <p-tag severity="contrast" value="Empate" icon="pi pi-equals" />
                             }
                             @if (finish(s)) {
                                 <p-tag severity="secondary" [value]="finish(s)" />
@@ -43,7 +49,7 @@
                                 @for (side of sides(s); track $index; let last = $last) {
                                     <span>
                                         @for (p of side; track p.wrestlerId; let lastP = $last) {
-                                            <span [class.font-semibold]="p.isWinner">
+                                            <span [class]="nameClass(s, p)">
                                                 @if (p.isWinner) {
                                                     <i class="pi pi-star-fill text-xs"></i>
                                                 }

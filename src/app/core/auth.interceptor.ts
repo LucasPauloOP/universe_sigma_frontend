@@ -4,13 +4,15 @@ import {
 } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { MessageService } from 'primeng/api';
-import { catchError, throwError } from 'rxjs';
+import { catchError, finalize, throwError } from 'rxjs';
+import { Loading } from './loading';
 import { Auth } from './auth';
 
 /** Anexa o token e mostra qualquer erro da API como snackbar. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(Auth);
   const toast = inject(MessageService);
+  const loading = inject(Loading);
   const token = auth.token();
   const isAuthCall = /\/auth\/(login|register)$/.test(req.url);
 
@@ -19,7 +21,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
       : req;
 
+  loading.start();
   return next(authed).pipe(
+    finalize(() => loading.stop()),
     catchError((err: HttpErrorResponse) => {
       if (err.status === 401 && !isAuthCall) {
         auth.logout();

@@ -18,7 +18,7 @@
                     <p-select formControlName="titleId" [options]="titles()" optionLabel="label" optionValue="value" [filter]="true" filterBy="label" [showClear]="true" placeholder="Nenhum" appendTo="body" fluid />
                 </div>
                 <div class="col-span-12 sm:col-span-6">
-                    <label class="block font-medium mb-2">Finalização</label>
+                    <label class="block font-medium mb-2">Como terminou{{ needsResult() && !values().isDraw ? ' *' : '' }}</label>
                     <p-select formControlName="finishType" [options]="finishes" optionLabel="label" optionValue="value" [showClear]="true" placeholder="—" appendTo="body" fluid />
                 </div>
                 <div class="col-span-12 sm:col-span-6">
@@ -33,6 +33,14 @@
                 }
             }
 
+            @if (isMatch() && tournamentOptions().length) {
+                <div class="col-span-12">
+                    <label class="block font-medium mb-2">Luta de torneio</label>
+                    <p-select formControlName="tournamentMatchId" [options]="tournamentOptions()" optionLabel="label" optionValue="value" [filter]="true" filterBy="label" [showClear]="true" placeholder="Não é luta de torneio" appendTo="body" (onChange)="pickTournament($event.value)" fluid />
+                    <small class="block mt-1 text-muted-color">Ao marcar a luta como realizada com vencedor, a vaga é decidida e a chave do torneio avança.</small>
+                </div>
+            }
+
             <div class="col-span-12 flex flex-wrap gap-x-8 gap-y-3">
                 @if (isMatch() && hasTitle()) {
                     <div class="flex flex-col gap-1">
@@ -42,6 +50,9 @@
                 }
                 <div class="flex items-center gap-3"><p-toggleswitch formControlName="isMainEvent" inputId="me" /><label for="me">Main event</label></div>
                 <div class="flex items-center gap-3"><p-toggleswitch formControlName="isDone" inputId="dn" /><label for="dn">Realizado</label></div>
+                @if (isMatch()) {
+                    <div class="flex items-center gap-3"><p-toggleswitch formControlName="isDraw" inputId="dr" /><label for="dr">Empate</label></div>
+                }
             </div>
         </div>
 
@@ -50,7 +61,12 @@
         <div class="grid grid-cols-12 gap-3">
             @for (side of sides(); track side) {
                 <div class="col-span-12 sm:col-span-6 border border-surface-200 dark:border-surface-700 rounded-xl p-3">
-                    <div class="font-medium mb-2">Lado {{ side }}</div>
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="font-medium flex-1">Lado {{ side }}</span>
+                        @if (isMatch() && onSide(side).length) {
+                            <p-button [label]="sideWins(side) ? 'Vencedor' : 'Venceu'" [icon]="sideWins(side) ? 'pi pi-star-fill' : 'pi pi-star'" [severity]="sideWins(side) ? 'primary' : 'secondary'" [outlined]="!sideWins(side)" size="small" type="button" (onClick)="toggleSideWinner(side)" />
+                        }
+                    </div>
                     <div class="flex flex-wrap gap-2 mb-3">
                         @for (p of onSide(side); track p.wrestlerId) {
                             <span class="inline-flex items-center gap-1 rounded-full pl-1 pr-2 py-1 text-sm" [class]="p.isWinner ? 'bg-primary text-primary-contrast' : 'bg-surface-100 dark:bg-surface-800'">
@@ -75,6 +91,12 @@
             }
         </div>
 
+        @if (problem(); as p) {
+            <div class="mt-4 flex items-center gap-2 rounded-lg px-3 py-2 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 text-sm">
+                <i class="pi pi-exclamation-circle"></i>{{ p }}
+            </div>
+        }
+
         <div class="mt-4">
             <label class="block font-medium mb-2">Notas</label>
             <textarea pTextarea rows="2" formControlName="notes" class="w-full"></textarea>
@@ -82,7 +104,7 @@
 
         <div class="flex justify-end gap-2 mt-6">
             <p-button type="button" label="Cancelar" severity="secondary" text (onClick)="ref.close()" />
-            <p-button type="submit" label="Salvar" icon="pi pi-check" [loading]="busy()" [disabled]="form.invalid || (hasStakes() && !form.value.cardDivisionId)" />
+            <p-button type="submit" label="Salvar" icon="pi pi-check" [loading]="busy()" [disabled]="form.invalid || !!problem() || (hasStakes() && !form.value.cardDivisionId)" />
         </div>
     </form>
 }

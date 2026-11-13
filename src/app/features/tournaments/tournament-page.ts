@@ -8,13 +8,16 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
 import { Api } from '../../core/api';
 import { Bracket, Entrant, TournamentMatch } from '../../core/models';
 import { Refs } from '../../core/refs';
 import { TOURNAMENT_FORMAT, TOURNAMENT_STATUS, labelOfOption } from '../../core/resources';
 import { confirmAction, openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
-import { MatchDialog, entrantName } from './match-dialog';
+import { MatchDialog, competitorsOf, entrantName } from './match-dialog';
+import { ScheduleDialog, ScheduleResult } from './schedule-dialog';
+import { episodeText, roundTitle } from '../../core/format';
 
 interface Round { round: number; title: string; matches: TournamentMatch[] }
 interface Group { name: string; matches: TournamentMatch[] }
@@ -22,7 +25,7 @@ interface Standing { name: string; played: number; wins: number }
 
 @Component({
   selector: 'app-tournament-page',
-  imports: [FormsModule, RouterLink, ButtonModule, InputNumberModule, ProgressBarModule, SelectModule, TagModule, PageHeader],
+  imports: [FormsModule, RouterLink, ButtonModule, InputNumberModule, ProgressBarModule, SelectModule, TagModule, TooltipModule, PageHeader],
   templateUrl: './tournament-page.html',
   styles: `
     .match {
@@ -189,6 +192,68 @@ export class TournamentPage {
     if (!d) return;
     await this.api.put(`tournaments/${d.tournament.id}`, { status }).catch(() => null);
     await this.load();
+  }
+
+  protected readonly episodeText = episodeText;
+  protected readonly competitorsOf = competitorsOf;
+
+  protected scheduled(m: TournamentMatch) {
+    return !!m.segmentId;
+  }
+
+  /** Quantas lutas da rodada ainda não estão em nenhum episódio. */
+  protected unscheduledIn(r: Round) {
+    return r.matches.filter((m) => !m.segmentId).length;
+  }
+
+  /** Agenda UMA luta num episódio (o card ganha o segmento já com os lutadores). */
+  protected async scheduleMatch(m: TournamentMatch) {
+    const res = await openDialog<ScheduleResult>(this.dialogs, ScheduleDialog, 'Agendar luta em episódio', { summary: `${this.matchTitle(m)} · ${this.versus(m)}`, askMatchType: true, matchTypeId: m.matchTypeId }, '32rem');
+    if (!res) return;
+    try {
+      await this.api.post(`tournament-matches/${m.id}/schedule`, { episodeId: res.episodeId, ...(res.matchTypeId ? { matchTypeId: res.matchTypeId } : {}) });
+      this.toast.add({ severity: 'success', summary: 'Luta agendada no episódio', life: 3000 });
+    } catch {
+      /* erro exibido pelo interceptor */
+    }
+    await this.load();
+  }
+
+  /** Agenda a rodada inteira (ex.: as 4 lutas das quartas) no mesmo episódio. */
+  protected async scheduleRound(r: Round) {
+    const left = this.unscheduledIn(r);
+    const res = await openDialog<ScheduleResult>(this.dialogs, ScheduleDialog, `Agendar ${r.title.toLowerCase()}`, { summary: `${r.title}: ${left} luta(s) ainda sem episódio entram no episódio escolhido.`, askMatchType: false }, '32rem');
+    if (!res) return;
+    try {
+      const out = await this.api.post<{ scheduled: number }>(`tournaments/${this.id()}/schedule-round`, { round: r.round, episodeId: res.episodeId });
+      this.toast.add({ severity: 'success', summary: `${out['scheduled']} luta(s) agendada(s)`, life: 3000 });
+    } catch {
+      /* erro exibido pelo interceptor */
+    }
+    await this.load();
+  }
+
+  protected async unlinkMatch(m: TournamentMatch) {
+    const ok = await confirmAction(this.confirmSvc, {
+      title: 'Desvincular do episódio',
+      message: 'A luta da chave deixa de apontar para o episódio. O segmento continua no card e pode ser apagado lá.',
+      confirmLabel: 'Desvincular'
+    });
+    if (!ok) return;
+    await this.api.post(`tournament-matches/${m.id}/unlink`).catch(() => null);
+    await this.load();
+  }
+
+  /** "A x B x C" (ou "a definir" nas vagas vazias). */
+  protected versus(m: TournamentMatch): string {
+    const names = competitorsOf(m).map((e) => this.name(e));
+    return names.length ? names.join(' x ') + (names.length < 2 ? ' x a definir' : '') : 'a definir';
+  }
+
+  protected matchTitle(m: TournamentMatch): string {
+    const t = this.data()?.tournament;
+    if (!t) return '';
+    return roundTitle({ format: t['format'], size: t['size'] }, m) + (this.isRoundRobin() ? '' : ` · Luta ${m.slot}`);
   }
 
   protected async editMatch(m: TournamentMatch) {

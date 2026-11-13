@@ -72,7 +72,7 @@ export interface Resource {
   /** campos que viram filtros na listagem */
   filters?: string[];
   rowActions?: RowAction[];
-  toolbar?: 'generateEpisodes';
+  toolbar?: 'generateEpisodes' | 'importHistory';
 }
 
 const opts = (m: Record<string, string>): Option[] =>
@@ -106,6 +106,11 @@ export const TOURNAMENT_STATUS = opts({
   ONGOING: 'Em andamento',
   FINISHED: 'Finalizado',
 });
+export const GENDER_DIVISION: Option[] = [
+  { value: 'M', label: 'Masculino' },
+  { value: 'W', label: 'Feminino' },
+  { value: 'X', label: 'Inter-gênero' },
+];
 export const SEGMENT_TYPE = opts({ MATCH: 'Luta', PROMO: 'Promo', OTHER: 'Outro' });
 export const FINISH_TYPE = opts({
   PINFALL: 'Pinfall',
@@ -252,19 +257,24 @@ export const RESOURCES: Record<string, Resource> = {
 
   'card-divisions': {
     key: 'card-divisions', singular: 'Divisão', plural: 'Cadastro de divisões', icon: 'sliders-v', group: 'Roster',
-    label: (e) => `${e['brand']?.name ? e['brand'].name + ' — ' : ''}${e['name']}`,
-    filters: ['brandId', 'isActive'],
+    label: (e) => {
+      const brands = (e['brands'] ?? []).map((b: Entity) => b['brand']?.name).filter(Boolean) as string[];
+      const where = brands.length === 1 ? `${brands[0]} — ` : '';
+      return `${where}${e['name']}${brands.length > 1 ? ' (todos os shows)' : ''}`;
+    },
+    filters: ['titleId', 'isActive'],
     columns: [
-      { key: 'brandId', label: 'Brand', render: (e) => e['brand']?.name ?? '', sortValue: (e) => e['brand']?.name ?? '' },
+      { key: 'brands', label: 'Brands', type: 'chips', render: (e) => (e['brands'] ?? []).map((b: Entity) => b['brand']?.name).join('|') },
       { key: 'name', label: 'Divisão' },
+      { key: 'gender', label: 'Gênero', render: (e) => GENDER_DIVISION.find((o) => o.value === (e['gender'] ?? 'X'))?.label ?? '' },
       { key: 'titleId', label: 'Título', render: (e) => e['title']?.name ?? '—', sortValue: (e) => e['title']?.name ?? '' },
       { key: 'entries', label: 'Colocados', render: (e) => String((e['entries'] ?? []).length), sortValue: (e) => (e['entries'] ?? []).length },
-      { key: 'order', label: 'Ordem' },
       { key: 'isActive', label: 'Ativa', type: 'bool' },
     ],
     fields: [
-      name({ label: 'Nome (ex.: Main Card, Mid Card, Tags)' }),
-      { key: 'brandId', label: 'Brand', type: 'ref', ref: 'brands' },
+      name({ label: 'Nome (ex.: Main Card Masculino, Lendas Feminino)' }),
+      { key: 'gender', label: 'Gênero', type: 'select', required: true, default: 'M', options: GENDER_DIVISION, fromEntity: (e) => e['gender'] ?? 'X', toBody: (v) => (v === 'X' ? null : v), hint: 'Inter-gênero mistura lutadores e lutadoras na mesma divisão.' },
+      { key: 'brandIds', label: 'Brands (shows) da divisão', type: 'refMulti', ref: 'brands', full: true, default: [], fromEntity: (e) => (e['brands'] ?? []).map((b: Entity) => b['brandId']), hint: 'Uma divisão pode valer para mais de um show (ex.: Tag Team feminino, Managers).' },
       { key: 'titleId', label: 'Título que a divisão disputa', type: 'ref', ref: 'titles', hint: 'O campeão deste título fica acima do ranking' },
       { key: 'order', label: 'Ordem de exibição', type: 'number', min: 0, default: 0 },
       { ...isActive, label: 'Divisão ativa' },
@@ -322,6 +332,7 @@ export const RESOURCES: Record<string, Resource> = {
 
   'title-baselines': {
     key: 'title-baselines', singular: 'Histórico de reinados', plural: 'Histórico anterior', icon: 'history', group: 'Títulos',
+    toolbar: 'importHistory',
     label: (e) => `${e['wrestler']?.name ?? e['team']?.name ?? '?'} — ${e['title']?.name ?? ''}`,
     filters: ['titleId'],
     columns: [

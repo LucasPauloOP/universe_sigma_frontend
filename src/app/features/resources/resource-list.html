@@ -2,6 +2,9 @@
     @if (res().toolbar === 'generateEpisodes') {
         <p-button label="Gerar episódios" icon="pi pi-bolt" severity="secondary" (onClick)="generate()" />
     }
+    @if (res().toolbar === 'importHistory') {
+        <p-button label="Importar histórico padrão" icon="pi pi-download" severity="secondary" (onClick)="importHistory()" pTooltip="Cadastra as vezes que cada lutador/dupla foi campeão e os dias de reinado (tabela de estatísticas por título). Não sobrescreve o que você já cadastrou." />
+    }
     <p-button label="Novo" icon="pi pi-plus" (onClick)="add()" />
 </app-page-header>
 

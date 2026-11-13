@@ -46,7 +46,7 @@
             </div>
             <p-button label="Inscrever" icon="pi pi-plus" severity="secondary" [disabled]="!newEntrant()" (onClick)="addEntrant()" />
         </div>
-        <p class="text-sm text-muted-color mb-0 mt-3">Depois de inscrever todos, use “Gerar chave” para organizar as lutas pelos seeds.</p>
+        <p class="text-sm text-muted-color mb-0 mt-3">Depois de inscrever todos, use “Gerar chave” para organizar as lutas pelos seeds. Quem passar das vagas da 1ª rodada entra numa luta pelo diálogo dela (triple threat, fatal 4-way...), onde também dá para trocar o tipo de luta de cada uma.</p>
     </div>
 
     <div class="card">
@@ -59,11 +59,33 @@
                     <div class="col-span-12 md:col-span-6 xl:col-span-4 flex flex-col gap-2">
                         <h3 class="text-sm font-semibold text-muted-color m-0">{{ g.name }}</h3>
                         @for (m of g.matches; track m.id) {
-                            <button type="button" class="match flex items-center gap-2 text-left w-full" (click)="editMatch(m)">
+                            <div>
+                            <button type="button" class="match flex flex-wrap items-center gap-x-2 text-left w-full" (click)="editMatch(m)">
+                                @if (m.matchType) {
+                                    <span class="basis-full text-xs text-muted-color flex items-center gap-1"><i class="pi pi-tag text-[0.65rem]"></i>{{ m.matchType['name'] }}</span>
+                                }
                                 <span [class.win]="m.winnerId && m.winnerId === m.entrantAId">{{ name(m.entrantA) || 'A definir' }}</span>
                                 <span class="text-muted-color text-sm">vs</span>
                                 <span [class.win]="m.winnerId && m.winnerId === m.entrantBId">{{ name(m.entrantB) || 'A definir' }}</span>
+                                @for (x of m.extras ?? []; track x.entrantId) {
+                                    <span class="text-muted-color text-sm">vs</span>
+                                    <span [class.win]="m.winnerId && m.winnerId === x.entrantId">{{ name(x.entrant) }}</span>
+                                }
                             </button>
+                                <div class="flex items-center gap-1 mt-1 px-1 text-xs min-h-6">
+                                    @if (m.segment; as seg) {
+                                        <a [routerLink]="['/episodes', seg['episodeId'], 'card']" class="flex items-center gap-1 no-underline text-primary min-w-0" [pTooltip]="'Abrir o card: ' + (seg.episode ? episodeText($any(seg.episode)) : '')">
+                                            <i [class]="seg.isDone ? 'pi pi-check-circle' : 'pi pi-calendar'"></i>
+                                            <span class="truncate">{{ seg.episode ? episodeText($any(seg.episode)) : 'Episódio' }}</span>
+                                        </a>
+                                        <span class="flex-1"></span>
+                                        <p-button icon="pi pi-link" severity="secondary" text rounded size="small" pTooltip="Desvincular do episódio" (onClick)="unlinkMatch(m)" aria-label="Desvincular" />
+                                    } @else {
+                                        <span class="flex-1"></span>
+                                        <p-button label="Agendar" icon="pi pi-calendar-plus" severity="secondary" text size="small" (onClick)="scheduleMatch(m)" />
+                                    }
+                                </div>
+                            </div>
                         }
                     </div>
                 }
@@ -92,14 +114,40 @@
         } @else {
             <div class="flex gap-6 overflow-x-auto pb-3">
                 @for (r of rounds(); track r.round) {
-                    <div class="min-w-56 flex flex-col">
-                        <h3 class="text-sm font-semibold text-muted-color m-0 mb-2">{{ r.title }}</h3>
+                    <div class="min-w-64 flex flex-col">
+                        <div class="flex items-center gap-2 mb-2">
+                            <h3 class="text-sm font-semibold text-muted-color m-0 flex-1">{{ r.title }}</h3>
+                            @if (unscheduledIn(r) > 0) {
+                                <p-button label="Agendar rodada" icon="pi pi-calendar-plus" severity="secondary" size="small" text (onClick)="scheduleRound(r)" [pTooltip]="'Agendar as ' + unscheduledIn(r) + ' lutas sem episódio'" />
+                            }
+                        </div>
                         <div class="flex flex-col justify-around gap-3 grow">
                             @for (m of r.matches; track m.id) {
+                                <div>
                                 <button type="button" class="match flex flex-col gap-1 text-left w-full" (click)="editMatch(m)">
+                                    @if (m.matchType) {
+                                        <span class="text-xs text-muted-color flex items-center gap-1"><i class="pi pi-tag text-[0.65rem]"></i>{{ m.matchType['name'] }}</span>
+                                    }
                                     <span [class.win]="m.winnerId && m.winnerId === m.entrantAId">{{ name(m.entrantA) || 'A definir' }}</span>
                                     <span [class.win]="m.winnerId && m.winnerId === m.entrantBId">{{ name(m.entrantB) || 'A definir' }}</span>
+                                    @for (x of m.extras ?? []; track x.entrantId) {
+                                        <span [class.win]="m.winnerId && m.winnerId === x.entrantId">{{ name(x.entrant) }}</span>
+                                    }
                                 </button>
+                                <div class="flex items-center gap-1 mt-1 px-1 text-xs min-h-6">
+                                    @if (m.segment; as seg) {
+                                        <a [routerLink]="['/episodes', seg['episodeId'], 'card']" class="flex items-center gap-1 no-underline text-primary min-w-0" [pTooltip]="'Abrir o card: ' + (seg.episode ? episodeText($any(seg.episode)) : '')">
+                                            <i [class]="seg.isDone ? 'pi pi-check-circle' : 'pi pi-calendar'"></i>
+                                            <span class="truncate">{{ seg.episode ? episodeText($any(seg.episode)) : 'Episódio' }}</span>
+                                        </a>
+                                        <span class="flex-1"></span>
+                                        <p-button icon="pi pi-link" severity="secondary" text rounded size="small" pTooltip="Desvincular do episódio" (onClick)="unlinkMatch(m)" aria-label="Desvincular" />
+                                    } @else {
+                                        <span class="flex-1"></span>
+                                        <p-button label="Agendar" icon="pi pi-calendar-plus" severity="secondary" text size="small" (onClick)="scheduleMatch(m)" />
+                                    }
+                                </div>
+                                </div>
                             }
                         </div>
                     </div>

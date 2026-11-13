@@ -11,6 +11,7 @@ import { firstValueFrom } from 'rxjs';
 import { API_BASE } from '../../core/api';
 import { Auth } from '../../core/auth';
 import { Universe } from '../../core/models';
+import { Refs } from '../../core/refs';
 import { UniverseStore } from '../../core/universe-store';
 import { confirmAction, openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
@@ -59,6 +60,7 @@ export class Universes {
     private readonly confirmSvc = inject(ConfirmationService);
     private readonly toast = inject(MessageService);
     private readonly router = inject(Router);
+    private readonly refs = inject(Refs);
 
     protected target: Universe | null = null;
     protected readonly items: MenuItem[] = [
@@ -97,6 +99,8 @@ export class Universes {
         });
         if (!ok) return;
         await firstValueFrom(this.http.post(`${API_BASE}/universes/${u.id}/reset`, { confirm: true }));
+        // os registros foram recriados com ids novos: a memória de listas ficou velha
+        this.refs.clear();
         this.toast.add({ severity: 'success', summary: 'Universe restaurado para o padrão', life: 3000 });
     }
 

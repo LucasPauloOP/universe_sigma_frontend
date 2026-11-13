@@ -42,6 +42,13 @@ export class Refs {
     return Promise.all([...new Set(keys)].map((k) => this.load(k)));
   }
 
+  /** Descarta TUDO (ex.: depois de restaurar o universe: os ids antigos deixaram de existir). */
+  clear() {
+    this.cache.clear();
+    this.data.clear();
+    this.version.update((v) => v + 1);
+  }
+
   invalidate(key: string) {
     this.cache.delete(key);
     this.data.delete(key);

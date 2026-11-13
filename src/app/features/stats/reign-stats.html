@@ -1,4 +1,5 @@
 <app-page-header title="Estatísticas de reinados" [subtitle]="data() ? 'Contado até ' + fmt(data()!.asOf) + ' (último episódio realizado do universe)' : ''">
+    <p-button label="Importar histórico padrão" icon="pi pi-download" severity="secondary" (onClick)="importHistory()" />
     <p-button label="Histórico anterior" icon="pi pi-history" severity="secondary" routerLink="/r/title-baselines" />
     <p-button label="Reinados" icon="pi pi-crown" severity="secondary" routerLink="/r/title-reigns" />
 </app-page-header>

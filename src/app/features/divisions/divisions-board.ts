@@ -35,16 +35,29 @@ export class DivisionsBoard {
     protected readonly fmt = fmtDate;
 
     protected readonly brandOptions = computed(() => {
-        const brands = this.divisions().flatMap((d) => (d.brand ? [{ value: d.brand.id, label: d.brand['name'] as string }] : []));
-        const unique = [...new Map(brands.map((b) => [b.value, b])).values()];
-        return this.divisions().some((d) => !d.brand) ? [...unique, { value: '_none', label: 'Sem brand' }] : unique;
+        const brands = this.divisions()
+            .filter((d) => d['isActive'] !== false)
+            .flatMap((d) => d.brands.map((b) => ({ value: b.brandId, label: b.brand['name'] as string })));
+        return [...new Map(brands.map((b) => [b.value, b])).values()].sort((a, b) => a.label.localeCompare(b.label));
     });
 
-    /** Divisões da brand escolhida, lado a lado como na planilha. */
+    /** Divisões da brand escolhida (as compartilhadas aparecem em todas as brands delas). */
     protected readonly visible = computed(() => {
         const id = this.brandId();
-        return this.divisions().filter((d) => (id === '_none' ? !d.brand : d.brandId === id) && d['isActive'] !== false);
+        return this.divisions().filter((d) => d['isActive'] !== false && d.brands.some((b) => b.brandId === id));
     });
+
+    protected genderLabel(d: CardDivision): string {
+        return d.gender === 'M' ? 'Masculino' : d.gender === 'W' ? 'Feminino' : 'Inter-gênero';
+    }
+
+    protected genderSeverity(d: CardDivision): 'info' | 'danger' | 'secondary' {
+        return d.gender === 'M' ? 'info' : d.gender === 'W' ? 'danger' : 'secondary';
+    }
+
+    protected shared(d: CardDivision): boolean {
+        return d.brands.length > 1;
+    }
 
     constructor() {
         effect(() => {
@@ -135,7 +148,7 @@ export class DivisionsBoard {
             const res = await this.api.post<{ created: number }>('card-divisions/defaults');
             this.toast.add({
                 severity: res.created ? 'success' : 'info',
-                summary: res.created ? `${res.created} divisões criadas` : 'Nada a criar: as brands RAW e SmackDown já têm divisões',
+                summary: res.created ? `${res.created} divisões criadas` : 'Nada a criar: todas as divisões padrão já existem',
                 life: 4000
             });
             await this.load();

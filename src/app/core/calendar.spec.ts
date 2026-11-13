@@ -76,3 +76,20 @@ describe('calendário do jogo (4 semanas por mês)', () => {
     expect(gameWeek(0)).toBe(1);
   });
 });
+
+describe('resultado da luta realizada', () => {
+  it('exige vencedor + como terminou, ou empate', async () => {
+    const { resultProblem } = await import('./segment-result');
+    const base = { type: 'MATCH', isDone: true, isDraw: false, finishType: 'PINFALL' };
+    const win = (side: number) => ({ side, isWinner: true });
+    const lose = (side: number) => ({ side, isWinner: false });
+    expect(resultProblem({ ...base, isDone: false, participants: [] })).toBeNull();
+    expect(resultProblem({ ...base, type: 'PROMO', participants: [] })).toBeNull();
+    expect(resultProblem({ ...base, participants: [win(1), lose(2)] })).toBeNull();
+    expect(resultProblem({ ...base, participants: [lose(1), lose(2)] })).toMatch(/vencedor/);
+    expect(resultProblem({ ...base, finishType: null, participants: [win(1), lose(2)] })).toMatch(/terminou/);
+    expect(resultProblem({ ...base, participants: [win(1), win(1), lose(2), lose(2)] })).toBeNull(); // time vencedor
+    expect(resultProblem({ ...base, isDraw: true, finishType: null, participants: [lose(1), lose(2)] })).toBeNull(); // empate
+    expect(resultProblem({ ...base, isDraw: true, participants: [win(1), lose(2)] })).toMatch(/empatada/);
+  });
+});

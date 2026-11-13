@@ -54,11 +54,13 @@ export interface Segment extends Entity {
   isMainEvent: boolean;
   finishType: string | null;
   isDone: boolean;
+  isDraw: boolean;
   notes: string | null;
   stakes: 'NONE' | 'RANKING' | 'CONTENDER';
   cardDivisionId: string | null;
   cardDivision?: Entity | null;
   rankingApplied?: boolean;
+  tournamentMatch?: (Entity & { round: number; slot: number; groupName: string | null; tournament: Entity }) | null;
   matchType?: Entity | null;
   title?: Entity | null;
   participants: Participant[];
@@ -90,10 +92,13 @@ export interface TournamentMatch extends Entity {
   entrantBId: string | null;
   winnerId: string | null;
   segmentId: string | null;
+  matchTypeId: string | null;
+  matchType?: Entity | null;
+  extras?: { position: number; entrantId: string; entrant: Entrant }[];
   entrantA: Entrant | null;
   entrantB: Entrant | null;
   winner: Entrant | null;
-  segment?: (Entity & { episode?: Entity & { show?: Entity } }) | null;
+  segment?: (Entity & { isDone?: boolean; episode?: Entity & { show?: Entity } }) | null;
 }
 
 export interface Bracket {
@@ -149,9 +154,9 @@ export interface Champion {
 
 export interface CardDivision extends Entity {
   name: string;
-  brandId: string | null;
+  gender: 'M' | 'W' | null;
   titleId: string | null;
-  brand?: Entity | null;
+  brands: { brandId: string; brand: Entity }[];
   title?: Entity | null;
   entries: DivisionEntry[];
   champions: Champion[];

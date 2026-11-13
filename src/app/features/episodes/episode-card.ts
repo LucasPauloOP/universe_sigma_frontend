@@ -10,9 +10,10 @@ import { ProgressBarModule } from 'primeng/progressbar';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { Api } from '../../core/api';
-import { MONTHS, gameDayName } from '../../core/format';
+import { MONTHS, gameDayName, roundTitle } from '../../core/format';
 import { EpisodeCard, Participant, Segment } from '../../core/models';
 import { EPISODE_STATUS, FINISH_TYPE, labelOfOption } from '../../core/resources';
+import { resultProblem } from '../../core/segment-result';
 import { confirmAction, openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
 import { SegmentDialog } from './segment-dialog';
@@ -82,10 +83,29 @@ export class EpisodeCardPage {
         return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
     }
 
+    /**
+     * Cor do nome depois da luta realizada: vencedor verde, perdedores vermelho e empate
+     * branco (preto no tema claro). Luta ainda não realizada: cor normal.
+     */
+    protected nameClass(s: Segment, p: Participant): string {
+        if (!s.isDone || s.type !== 'MATCH') return p.isWinner ? 'font-semibold' : '';
+        if (s.isDraw) return 'font-semibold text-surface-950 dark:text-surface-0';
+        const hasWinner = s.participants.some((x) => x.isWinner);
+        if (!hasWinner) return '';
+        return p.isWinner ? 'font-semibold text-green-500' : 'text-red-500';
+    }
+
     protected stakesLabel(s: Segment): string {
         if (s.stakes === 'NONE' || !s.cardDivision) return '';
         const what = s.stakes === 'CONTENDER' ? 'Desafiante' : 'Subida de divisão';
         return `${what}: ${s.cardDivision['name']}${s.isDone && s.rankingApplied ? ' ✓' : ''}`;
+    }
+
+    protected tournamentLabel(s: Segment): string {
+        const m = s.tournamentMatch;
+        if (!m) return '';
+        const t = m.tournament;
+        return `${t['name']} · ${roundTitle({ format: t['format'], size: t['size'] }, m)}`;
     }
 
     protected typeIcon(s: Segment) {
@@ -104,6 +124,11 @@ export class EpisodeCardPage {
     }
 
     protected async toggleDone(s: Segment, done: boolean) {
+        // Realizada exige resultado (vencedor + como terminou, ou empate): se falta, abre a luta
+        if (done && resultProblem({ type: s.type, isDone: true, isDraw: s.isDraw, finishType: s.finishType, participants: s.participants })) {
+            await this.openDialog(s, true);
+            return;
+        }
         await this.api.put(`segments/${s.id}`, { isDone: done }).catch(() => null);
         await this.load();
     }
@@ -129,8 +154,8 @@ export class EpisodeCardPage {
         await this.openDialog(s);
     }
 
-    private async openDialog(segment?: Segment) {
-        const saved = await openDialog(this.dialogs, SegmentDialog, segment ? 'Editar segmento' : 'Novo segmento', { episodeId: this.id(), segment }, '52rem');
+    private async openDialog(segment?: Segment, markDone = false) {
+        const saved = await openDialog(this.dialogs, SegmentDialog, segment ? 'Editar segmento' : 'Novo segmento', { episodeId: this.id(), segment, markDone }, '52rem');
         if (saved) await this.load();
     }
 

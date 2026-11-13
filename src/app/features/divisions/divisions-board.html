@@ -2,7 +2,7 @@
     @if (brandOptions().length) {
         <p-select [options]="brandOptions()" optionLabel="label" optionValue="value" placeholder="Brand" appendTo="body" [ngModel]="brandId()" (ngModelChange)="brandId.set($event)" />
     }
-    <p-button label="Criar divisões padrão" icon="pi pi-bolt" severity="secondary" (onClick)="createDefaults()" pTooltip="Cria Main Card, Mid Card, Tags etc. para RAW e SmackDown (se ainda não tiverem)" />
+    <p-button label="Criar divisões padrão" icon="pi pi-bolt" severity="secondary" (onClick)="createDefaults()" pTooltip="Cria as divisões que faltam: Main Card, Mid Card, Tag Team, Lendas, Outros (um por show) e Tag Team feminino e Managers (todos os shows)" />
     <p-button label="Configurar" icon="pi pi-cog" routerLink="/r/card-divisions" />
 </app-page-header>
 
@@ -24,6 +24,12 @@
         <section class="card w-72 shrink-0 flex flex-col gap-3 !mb-0">
             <header>
                 <h2 class="text-lg font-semibold m-0">{{ d.name }}</h2>
+                <div class="flex flex-wrap gap-1 my-1">
+                    <p-tag [value]="genderLabel(d)" [severity]="genderSeverity(d)" />
+                    @if (shared(d)) {
+                        <p-tag value="Todos os shows" severity="secondary" icon="pi pi-share-alt" />
+                    }
+                </div>
                 <div class="text-sm text-muted-color truncate">
                     @if (d.title) {
                         <i class="pi pi-trophy mr-1"></i>{{ d.title['name'] }}

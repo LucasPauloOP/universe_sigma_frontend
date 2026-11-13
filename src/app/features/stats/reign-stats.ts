@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { ChartModule } from 'primeng/chart';
 import { ProgressBarModule } from 'primeng/progressbar';
@@ -30,6 +31,7 @@ interface Overall {
 export class ReignStats {
     private readonly api = inject(Api);
     private readonly store = inject(UniverseStore);
+    private readonly toast = inject(MessageService);
 
     protected readonly data = signal<TitleStats | null>(null);
     protected readonly loading = signal(true);
@@ -113,6 +115,16 @@ export class ReignStats {
             this.data.set(null);
         } finally {
             this.loading.set(false);
+        }
+    }
+
+    protected async importHistory() {
+        try {
+            const r = await this.api.post<{ created: number }>('title-baselines/defaults');
+            this.toast.add({ severity: r.created ? 'success' : 'info', summary: r.created ? `${r.created} históricos importados` : 'O histórico padrão já está cadastrado', life: 5000 });
+            await this.load();
+        } catch {
+            /* erro exibido pelo interceptor */
         }
     }
 
