@@ -1,0 +1,91 @@
+<app-page-header title="Divisões" subtitle="Ranking por brand: o campeão fica acima e o 1º da lista é o próximo desafiante.">
+    @if (brandOptions().length) {
+        <p-select [options]="brandOptions()" optionLabel="label" optionValue="value" placeholder="Brand" appendTo="body" [ngModel]="brandId()" (ngModelChange)="brandId.set($event)" />
+    }
+    <p-button label="Criar divisões padrão" icon="pi pi-bolt" severity="secondary" (onClick)="createDefaults()" pTooltip="Cria Main Card, Mid Card, Tags etc. para RAW e SmackDown (se ainda não tiverem)" />
+    <p-button label="Configurar" icon="pi pi-cog" routerLink="/r/card-divisions" />
+</app-page-header>
+
+@if (loading()) {
+    <p-progressbar mode="indeterminate" [style]="{ height: '4px' }" />
+}
+
+@if (!loading() && !divisions().length) {
+    <div class="card text-center py-10">
+        <i class="pi pi-list-check text-4xl text-muted-color"></i>
+        <p class="mt-3 mb-1 font-semibold">Ainda não há divisões.</p>
+        <p class="text-muted-color mt-0">Crie as padrão (Main Card, Mid Card, Tags, Women's World...) ou cadastre as suas em “Configurar”.</p>
+        <p-button label="Criar divisões padrão" icon="pi pi-bolt" (onClick)="createDefaults()" />
+    </div>
+}
+
+<div class="flex gap-4 overflow-x-auto pb-4 items-start">
+    @for (d of visible(); track d.id) {
+        <section class="card w-72 shrink-0 flex flex-col gap-3 !mb-0">
+            <header>
+                <h2 class="text-lg font-semibold m-0">{{ d.name }}</h2>
+                <div class="text-sm text-muted-color truncate">
+                    @if (d.title) {
+                        <i class="pi pi-trophy mr-1"></i>{{ d.title['name'] }}
+                    } @else {
+                        Sem título vinculado
+                    }
+                </div>
+            </header>
+
+            @if (d.title) {
+                <div class="rounded-xl p-3 bg-primary text-primary-contrast">
+                    <div class="text-xs uppercase tracking-wide opacity-80"><i class="pi pi-crown mr-1"></i>Campeão</div>
+                    @if (d.champions.length) {
+                        <div class="font-semibold">{{ champion(d) }}</div>
+                        @if (d.championSince) {
+                            <div class="text-xs opacity-80">desde {{ fmt(d.championSince) }}</div>
+                        }
+                    } @else {
+                        <div class="opacity-90">Vago</div>
+                    }
+                </div>
+            }
+
+            <div cdkDropList (cdkDropListDropped)="drop(d, $event)" class="flex flex-col gap-1">
+                @for (e of d.entries; track e.id; let i = $index) {
+                    <div cdkDrag class="flex items-center gap-2 rounded-lg px-2 py-1.5 bg-surface-100 dark:bg-surface-800" [class.opacity-60]="isChampion(d, e)">
+                        <span class="cursor-grab text-muted-color flex" cdkDragHandle><i class="pi pi-bars text-xs"></i></span>
+                        <span class="w-5 text-sm text-muted-color text-right">{{ i + 1 }}</span>
+                        <span class="flex-1 min-w-0 truncate" [class.font-semibold]="i === 0">{{ nameOf(e) }}</span>
+                        @if (isChampion(d, e)) {
+                            <p-tag value="Campeão" severity="warn" />
+                        }
+                        @if (i > 0) {
+                            <p-button icon="pi pi-angle-double-up" severity="secondary" text rounded size="small" pTooltip="Mover para o topo (desafiante)" (onClick)="toTop(d, e)" aria-label="Mover para o topo" />
+                        }
+                        <p-button icon="pi pi-times" severity="secondary" text rounded size="small" (onClick)="remove(d, e)" aria-label="Remover" />
+                    </div>
+                } @empty {
+                    <div class="text-sm text-muted-color py-2">Ninguém na divisão ainda.</div>
+                }
+            </div>
+
+            <p-select
+                [options]="pickerOptions(d)"
+                [group]="true"
+                optionLabel="label"
+                optionValue="value"
+                optionGroupLabel="label"
+                optionGroupChildren="items"
+                [filter]="true"
+                filterBy="label"
+                placeholder="Adicionar à divisão"
+                appendTo="body"
+                [ngModel]="null"
+                (ngModelChange)="add(d, $event)"
+                [disabled]="saving()"
+                fluid
+            />
+        </section>
+    } @empty {
+        @if (!loading() && divisions().length) {
+            <p class="text-muted-color">Nenhuma divisão ativa nesta brand.</p>
+        }
+    }
+</div>

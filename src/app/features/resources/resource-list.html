@@ -1,0 +1,114 @@
+<app-page-header [title]="res().plural" [subtitle]="filtered().length + ' de ' + items().length + ' registros'">
+    @if (res().toolbar === 'generateEpisodes') {
+        <p-button label="Gerar episódios" icon="pi pi-bolt" severity="secondary" (onClick)="generate()" />
+    }
+    <p-button label="Novo" icon="pi pi-plus" (onClick)="add()" />
+</app-page-header>
+
+<div class="card">
+    <p-table
+        [value]="filtered()"
+        [loading]="loading()"
+        [paginator]="true"
+        [rows]="25"
+        [rowsPerPageOptions]="[10, 25, 50, 100]"
+        [rowHover]="true"
+        [tableStyle]="{ 'min-width': '50rem' }"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="{first} a {last} de {totalRecords}"
+        paginatorDropdownAppendTo="body"
+    >
+        <ng-template #caption>
+            <div class="flex flex-wrap items-center gap-3">
+                <p-iconfield class="grow sm:grow-0 sm:w-80">
+                    <p-inputicon class="pi pi-search" />
+                    <input pInputText type="text" class="w-full" placeholder="Buscar..." [ngModel]="search()" (ngModelChange)="search.set($event)" />
+                </p-iconfield>
+                @for (f of filters(); track f.field.key) {
+                    <p-select
+                        [options]="f.options"
+                        optionLabel="label"
+                        optionValue="value"
+                        [placeholder]="f.field.label"
+                        [showClear]="true"
+                        [filter]="f.options.length > 8"
+                        filterBy="label"
+                        appendTo="body"
+                        [ngModel]="filterValues()[f.field.key] ?? null"
+                        (ngModelChange)="setFilter(f.field.key, $event)"
+                        styleClass="min-w-40"
+                    />
+                }
+                @if (hasFilters()) {
+                    <p-button label="Limpar" icon="pi pi-filter-slash" severity="secondary" text size="small" (onClick)="clearFilters()" />
+                }
+            </div>
+        </ng-template>
+
+        <ng-template #header>
+            <tr>
+                @for (c of res().columns; track c.key) {
+                    @if (c.type === 'image') {
+                        <th style="width: 4rem"></th>
+                    } @else {
+                        <th [pSortableColumn]="'s.' + c.key">{{ c.label }} <p-sort-icon [field]="'s.' + c.key" /></th>
+                    }
+                }
+                <th style="width: 1px"></th>
+            </tr>
+        </ng-template>
+
+        <ng-template #body let-row>
+            <tr (dblclick)="edit(row.e)" [class.opacity-60]="row.e['isActive'] === false">
+                @for (c of res().columns; track c.key) {
+                    <td>
+                        @switch (c.type) {
+                            @case ('image') {
+                                @if (row.e[c.key]) {
+                                    <img class="w-9 h-9 rounded-full object-cover" [src]="row.e[c.key]" alt="" loading="lazy" />
+                                } @else {
+                                    <span class="w-9 h-9 rounded-full inline-flex items-center justify-center bg-surface-100 dark:bg-surface-800 text-muted-color"><i class="pi pi-image"></i></span>
+                                }
+                            }
+                            @case ('switch') {
+                                <p-toggleswitch [ngModel]="row.e[c.key] !== false" (onChange)="toggleActive(row.e, $event.checked)" [attr.aria-label]="c.label" />
+                            }
+                            @case ('bool') {
+                                <i [class]="row.e[c.key] ? 'pi pi-check-circle text-primary' : 'pi pi-minus text-muted-color'"></i>
+                            }
+                            @case ('chips') {
+                                <div class="flex flex-wrap gap-1">
+                                    @for (t of chips(c, row).slice(0, 3); track $index) {
+                                        <p-tag [value]="t" severity="secondary" />
+                                    }
+                                    @if (chips(c, row).length > 3) {
+                                        <p-tag [value]="'+' + (chips(c, row).length - 3)" severity="contrast" [pTooltip]="chips(c, row).join(', ')" />
+                                    }
+                                </div>
+                            }
+                            @default {
+                                @if (c.key === 'color' && row.e[c.key]) {
+                                    <span class="inline-block w-3.5 h-3.5 rounded-full mr-2 align-middle" [style.background]="row.e[c.key]"></span>
+                                }
+                                {{ row.c[c.key] }}
+                            }
+                        }
+                    </td>
+                }
+                <td class="whitespace-nowrap text-right">
+                    @for (a of res().rowActions; track a.label) {
+                        <p-button [icon]="'pi pi-' + a.icon" [pTooltip]="a.label" severity="secondary" text rounded (onClick)="runAction(a, row.e)" [attr.aria-label]="a.label" />
+                    }
+                    <p-button icon="pi pi-pencil" pTooltip="Editar" severity="secondary" text rounded (onClick)="edit(row.e)" aria-label="Editar" />
+                    <p-button icon="pi pi-trash" pTooltip="Excluir" severity="danger" text rounded (onClick)="remove(row.e)" aria-label="Excluir" />
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template #emptymessage>
+            <tr>
+                <td [attr.colspan]="res().columns.length + 1" class="text-center text-muted-color p-8">{{ loading() ? 'Carregando…' : 'Nenhum registro encontrado.' }}</td>
+            </tr>
+        </ng-template>
+    </p-table>
+</div>

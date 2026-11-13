@@ -1,0 +1,112 @@
+<a routerLink="/r/tournaments" class="inline-flex items-center gap-2 text-muted-color mb-3 no-underline"><i class="pi pi-arrow-left"></i>Torneios</a>
+@if (loading() && !data()) {
+    <p-progressbar mode="indeterminate" [style]="{ height: '4px' }" />
+}
+
+@if (data(); as d) {
+    <app-page-header
+        [title]="d.tournament['name']"
+        [subtitle]="format(d.tournament['format']) + ' · ' + d.tournament['size'] + ' vagas · ' + (d.tournament['isTag'] ? 'duplas' : 'individual') + ' · ' + status(d.tournament['status'])"
+    >
+        @if (d.tournament['status'] === 'PLANNED') {
+            <p-button label="Iniciar" icon="pi pi-play" severity="secondary" (onClick)="setStatus('ONGOING')" />
+        } @else if (d.tournament['status'] === 'ONGOING') {
+            <p-button label="Finalizar" icon="pi pi-flag" severity="secondary" (onClick)="setStatus('FINISHED')" />
+        }
+        <p-button [label]="d.matches.length ? 'Regerar chave' : 'Gerar chave'" icon="pi pi-sitemap" (onClick)="generate()" />
+    </app-page-header>
+
+    @if (champion(); as c) {
+        <div class="flex items-center gap-3 p-4 rounded-xl bg-primary text-primary-contrast mb-4"><i class="pi pi-trophy text-xl"></i> Campeão: <strong>{{ name(c) }}</strong></div>
+    }
+
+    <div class="card mb-4">
+        <h2 class="text-lg font-semibold mt-0 mb-3">Participantes ({{ d.entrants.length }}/{{ d.tournament['size'] }})</h2>
+        <div class="flex flex-wrap gap-2">
+            @for (e of d.entrants; track e.id) {
+                <span class="inline-flex items-center gap-2 rounded-full pl-3 pr-1 py-1 bg-surface-100 dark:bg-surface-800">
+                    @if (e.seed) {
+                        <small class="text-muted-color">#{{ e.seed }}</small>
+                    }
+                    {{ name(e) }}
+                    <p-button icon="pi pi-times" severity="secondary" text rounded size="small" (onClick)="removeEntrant(e)" aria-label="Remover" />
+                </span>
+            } @empty {
+                <span class="text-muted-color">Ninguém inscrito ainda.</span>
+            }
+        </div>
+        <div class="flex flex-wrap gap-3 items-end mt-4">
+            <div class="grow basis-72">
+                <label class="block font-medium mb-2">{{ d.tournament['isTag'] ? 'Adicionar dupla' : 'Adicionar lutador' }}</label>
+                <p-select [options]="pickerOptions()" optionLabel="label" optionValue="value" [filter]="true" filterBy="label" [showClear]="true" placeholder="Selecione" appendTo="body" [ngModel]="newEntrant()" (ngModelChange)="newEntrant.set($event)" fluid />
+            </div>
+            <div class="w-32">
+                <label class="block font-medium mb-2">Seed</label>
+                <p-inputnumber [min]="1" [useGrouping]="false" [ngModel]="newSeed()" (ngModelChange)="newSeed.set($event)" fluid />
+            </div>
+            <p-button label="Inscrever" icon="pi pi-plus" severity="secondary" [disabled]="!newEntrant()" (onClick)="addEntrant()" />
+        </div>
+        <p class="text-sm text-muted-color mb-0 mt-3">Depois de inscrever todos, use “Gerar chave” para organizar as lutas pelos seeds.</p>
+    </div>
+
+    <div class="card">
+        <h2 class="text-lg font-semibold mt-0 mb-3">Chave</h2>
+        @if (!d.matches.length) {
+            <p class="text-muted-color m-0">A chave ainda não foi gerada.</p>
+        } @else if (isRoundRobin()) {
+            <div class="grid grid-cols-12 gap-4 items-start">
+                @for (g of groups(); track g.name) {
+                    <div class="col-span-12 md:col-span-6 xl:col-span-4 flex flex-col gap-2">
+                        <h3 class="text-sm font-semibold text-muted-color m-0">{{ g.name }}</h3>
+                        @for (m of g.matches; track m.id) {
+                            <button type="button" class="match flex items-center gap-2 text-left w-full" (click)="editMatch(m)">
+                                <span [class.win]="m.winnerId && m.winnerId === m.entrantAId">{{ name(m.entrantA) || 'A definir' }}</span>
+                                <span class="text-muted-color text-sm">vs</span>
+                                <span [class.win]="m.winnerId && m.winnerId === m.entrantBId">{{ name(m.entrantB) || 'A definir' }}</span>
+                            </button>
+                        }
+                    </div>
+                }
+                <div class="col-span-12 md:col-span-6 xl:col-span-4">
+                    <h3 class="text-sm font-semibold text-muted-color m-0 mb-2">Classificação</h3>
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="text-left">
+                                <th class="py-2 pr-3 border-b border-surface-200 dark:border-surface-700">Participante</th>
+                                <th class="py-2 pr-3 border-b border-surface-200 dark:border-surface-700">J</th>
+                                <th class="py-2 border-b border-surface-200 dark:border-surface-700">V</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (s of standings(); track s.name) {
+                                <tr>
+                                    <td class="py-2 pr-3 border-b border-surface-100 dark:border-surface-800">{{ s.name }}</td>
+                                    <td class="py-2 pr-3 border-b border-surface-100 dark:border-surface-800">{{ s.played }}</td>
+                                    <td class="py-2 border-b border-surface-100 dark:border-surface-800">{{ s.wins }}</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        } @else {
+            <div class="flex gap-6 overflow-x-auto pb-3">
+                @for (r of rounds(); track r.round) {
+                    <div class="min-w-56 flex flex-col">
+                        <h3 class="text-sm font-semibold text-muted-color m-0 mb-2">{{ r.title }}</h3>
+                        <div class="flex flex-col justify-around gap-3 grow">
+                            @for (m of r.matches; track m.id) {
+                                <button type="button" class="match flex flex-col gap-1 text-left w-full" (click)="editMatch(m)">
+                                    <span [class.win]="m.winnerId && m.winnerId === m.entrantAId">{{ name(m.entrantA) || 'A definir' }}</span>
+                                    <span [class.win]="m.winnerId && m.winnerId === m.entrantBId">{{ name(m.entrantB) || 'A definir' }}</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+} @else if (!loading()) {
+    <p class="text-muted-color">Torneio não encontrado.</p>
+}

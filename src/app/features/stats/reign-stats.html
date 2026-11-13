@@ -1,0 +1,160 @@
+<app-page-header title="Estatísticas de reinados" [subtitle]="data() ? 'Contado até ' + fmt(data()!.asOf) + ' (último episódio realizado do universe)' : ''">
+    <p-button label="Histórico anterior" icon="pi pi-history" severity="secondary" routerLink="/r/title-baselines" />
+    <p-button label="Reinados" icon="pi pi-crown" severity="secondary" routerLink="/r/title-reigns" />
+</app-page-header>
+
+@if (loading()) {
+    <p-progressbar mode="indeterminate" [style]="{ height: '4px' }" />
+}
+
+@if (data(); as d) {
+    @if (!d.titles.length) {
+        <div class="card text-center py-10">
+            <i class="pi pi-chart-bar text-4xl text-muted-color"></i>
+            <p class="mt-3 mb-1 font-semibold">Ainda não há reinados para analisar.</p>
+            <p class="text-muted-color mt-0">Cadastre o <a routerLink="/r/title-baselines" class="text-primary">histórico anterior</a> (ex.: John Cena, 16 reinados) ou os <a routerLink="/r/title-reigns" class="text-primary">reinados do universe</a>.</p>
+        </div>
+    } @else {
+        <div class="grid grid-cols-12 gap-4 mb-4">
+            @for (h of highlights(); track h.label) {
+                <div class="col-span-12 md:col-span-4">
+                    <div class="card flex items-center gap-4 h-full">
+                        <span class="w-12 h-12 shrink-0 rounded-xl flex items-center justify-center bg-primary-100 dark:bg-primary-400/20 text-primary"><i [class]="'pi ' + h.icon + ' text-xl'"></i></span>
+                        <div class="min-w-0">
+                            <div class="text-sm text-muted-color">{{ h.label }}</div>
+                            <div class="text-lg font-semibold truncate">{{ h.value }}</div>
+                            <div class="text-sm text-muted-color">{{ h.detail }}</div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+            <p-selectbutton [options]="viewOptions" optionLabel="label" optionValue="value" [allowEmpty]="false" [ngModel]="view()" (ngModelChange)="view.set($event)" />
+            @if (view() === 'title') {
+                <p-select [options]="titleOptions()" optionLabel="label" optionValue="value" [filter]="titleOptions().length > 8" filterBy="label" placeholder="Título" appendTo="body" styleClass="min-w-64" [ngModel]="current()?.title?.id ?? null" (ngModelChange)="selectedTitle.set($event)" />
+            }
+        </div>
+
+        @if (view() === 'title' && current(); as c) {
+            <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-12 xl:col-span-7">
+                    <div class="card">
+                        <h2 class="text-lg font-semibold mt-0 mb-3">{{ c.title['name'] }}</h2>
+                        <div class="overflow-x-auto">
+                            <table class="w-full border-collapse min-w-[34rem]">
+                                <thead>
+                                    <tr class="text-left text-muted-color text-sm">
+                                        <th class="py-2 pr-2 w-8">#</th>
+                                        <th class="py-2 pr-3">Campeão</th>
+                                        <th class="py-2 pr-3 text-right">Vezes</th>
+                                        <th class="py-2 pr-3 text-right">Total de dias</th>
+                                        <th class="py-2 pr-3 text-right">Maior reinado</th>
+                                        <th class="py-2 w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (h of c.holders; track h.key; let i = $index) {
+                                        <tr class="border-t border-surface-200 dark:border-surface-700">
+                                            <td class="py-2 pr-2 text-muted-color">{{ i + 1 }}</td>
+                                            <td class="py-2 pr-3">
+                                                <span class="font-medium">{{ h.name }}</span>
+                                                @if (h.isCurrent) {
+                                                    <p-tag value="Atual" severity="success" class="ml-2" />
+                                                }
+                                            </td>
+                                            <td class="py-2 pr-3 text-right font-semibold">{{ h.reigns }}x</td>
+                                            <td class="py-2 pr-3 text-right">{{ h.days.toLocaleString('pt-BR') }}</td>
+                                            <td class="py-2 pr-3 text-right">{{ h.longestDays === null ? '—' : h.longestDays.toLocaleString('pt-BR') }}</td>
+                                            <td class="py-2 text-right">
+                                                @if (hasDetail(h)) {
+                                                    <p-button [icon]="isOpen(c.title.id + h.key) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" severity="secondary" text rounded size="small" (onClick)="toggle(c.title.id + h.key)" aria-label="Detalhar reinados" />
+                                                }
+                                            </td>
+                                        </tr>
+                                        @if (isOpen(c.title.id + h.key)) {
+                                            <tr>
+                                                <td></td>
+                                                <td colspan="5" class="pb-3">
+                                                    <div class="rounded-xl bg-surface-50 dark:bg-surface-800 p-3 text-sm flex flex-col gap-1">
+                                                        @if (h.baselineReigns > 0) {
+                                                            <div class="flex justify-between gap-3">
+                                                                <span>Antes do universe{{ h.baselineNote ? ' — ' + h.baselineNote : '' }}</span>
+                                                                <span class="text-muted-color">{{ h.baselineReigns }} reinado(s) · {{ h.baselineDays.toLocaleString('pt-BR') }} dias</span>
+                                                            </div>
+                                                        }
+                                                        @for (r of h.reignList; track r.id; let n = $index) {
+                                                            <div class="flex justify-between gap-3">
+                                                                <span>Reinado #{{ h.baselineReigns + n + 1 }} · {{ fmt(r.startDate) }} → {{ r.endDate ? fmt(r.endDate) : 'atual' }}</span>
+                                                                <span class="text-muted-color">{{ r.days.toLocaleString('pt-BR') }} dias</span>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="text-xs text-muted-color mb-0 mt-3">“Maior reinado” considera só reinados com data; o histórico anterior entra apenas como total.</p>
+                    </div>
+                </div>
+                <div class="col-span-12 xl:col-span-5">
+                    <div class="card">
+                        <h2 class="text-lg font-semibold mt-0 mb-3">Dias com o cinturão (top 10)</h2>
+                        <p-chart type="bar" [data]="chartData()" [options]="chartOptions" [height]="chartHeight()" />
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (view() === 'wrestler') {
+            <div class="card">
+                <h2 class="text-lg font-semibold mt-0 mb-3">Ranking geral (todos os títulos)</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse min-w-[30rem]">
+                        <thead>
+                            <tr class="text-left text-muted-color text-sm">
+                                <th class="py-2 pr-2 w-8">#</th>
+                                <th class="py-2 pr-3">Lutador / dupla</th>
+                                <th class="py-2 pr-3 text-right">Reinados</th>
+                                <th class="py-2 pr-3 text-right">Total de dias</th>
+                                <th class="py-2 w-10"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (o of overall(); track o.key; let i = $index) {
+                                <tr class="border-t border-surface-200 dark:border-surface-700">
+                                    <td class="py-2 pr-2 text-muted-color">{{ i + 1 }}</td>
+                                    <td class="py-2 pr-3 font-medium">{{ o.name }}</td>
+                                    <td class="py-2 pr-3 text-right font-semibold">{{ o.reigns }}x</td>
+                                    <td class="py-2 pr-3 text-right">{{ o.days.toLocaleString('pt-BR') }}</td>
+                                    <td class="py-2 text-right">
+                                        <p-button [icon]="isOpen('o' + o.key) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" severity="secondary" text rounded size="small" (onClick)="toggle('o' + o.key)" aria-label="Detalhar por título" />
+                                    </td>
+                                </tr>
+                                @if (isOpen('o' + o.key)) {
+                                    <tr>
+                                        <td></td>
+                                        <td colspan="4" class="pb-3">
+                                            <div class="rounded-xl bg-surface-50 dark:bg-surface-800 p-3 text-sm flex flex-col gap-1">
+                                                @for (t of o.titles; track t.title) {
+                                                    <div class="flex justify-between gap-3">
+                                                        <span>{{ t.title }} @if (t.current) { <p-tag value="Atual" severity="success" class="ml-1" /> }</span>
+                                                        <span class="text-muted-color">{{ t.reigns }}x · {{ t.days.toLocaleString('pt-BR') }} dias</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+}

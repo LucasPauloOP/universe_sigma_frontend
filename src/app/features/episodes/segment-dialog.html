@@ -1,0 +1,88 @@
+@if (!ready()) {
+    <div class="flex justify-center p-8"><p-progress-spinner strokeWidth="4" [style]="{ width: '3rem', height: '3rem' }" /></div>
+} @else {
+    <form [formGroup]="form" (ngSubmit)="save()">
+        <div class="grid grid-cols-12 gap-4">
+            <div class="col-span-12 sm:col-span-6">
+                <label class="block font-medium mb-2">Tipo *</label>
+                <p-select formControlName="type" [options]="types" optionLabel="label" optionValue="value" appendTo="body" fluid />
+            </div>
+
+            @if (isMatch()) {
+                <div class="col-span-12 sm:col-span-6">
+                    <label class="block font-medium mb-2">Tipo de luta</label>
+                    <p-select formControlName="matchTypeId" [options]="matchTypes()" optionLabel="label" optionValue="value" [filter]="true" filterBy="label" [showClear]="true" placeholder="Selecione" appendTo="body" fluid />
+                </div>
+                <div class="col-span-12 sm:col-span-6">
+                    <label class="block font-medium mb-2">Valendo título</label>
+                    <p-select formControlName="titleId" [options]="titles()" optionLabel="label" optionValue="value" [filter]="true" filterBy="label" [showClear]="true" placeholder="Nenhum" appendTo="body" fluid />
+                </div>
+                <div class="col-span-12 sm:col-span-6">
+                    <label class="block font-medium mb-2">Finalização</label>
+                    <p-select formControlName="finishType" [options]="finishes" optionLabel="label" optionValue="value" [showClear]="true" placeholder="—" appendTo="body" fluid />
+                </div>
+                <div class="col-span-12 sm:col-span-6">
+                    <label class="block font-medium mb-2">O que está em jogo no ranking</label>
+                    <p-select formControlName="stakes" [options]="stakesOptions" optionLabel="label" optionValue="value" appendTo="body" fluid />
+                </div>
+                @if (hasStakes()) {
+                    <div class="col-span-12 sm:col-span-6">
+                        <label class="block font-medium mb-2">Divisão afetada *</label>
+                        <p-select formControlName="cardDivisionId" [options]="divisionOptions()" optionLabel="label" optionValue="value" [filter]="true" filterBy="label" placeholder="Selecione a divisão" appendTo="body" fluid />
+                    </div>
+                }
+            }
+
+            <div class="col-span-12 flex flex-wrap gap-x-8 gap-y-3">
+                @if (isMatch() && hasTitle()) {
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-3"><p-toggleswitch formControlName="titleChanged" inputId="tc" /><label for="tc">Houve troca de campeão</label></div>
+                        <small class="text-muted-color">Com a luta realizada e o vencedor marcado (estrela), o novo reinado é criado e o ex-campeão entra na fila da divisão.</small>
+                    </div>
+                }
+                <div class="flex items-center gap-3"><p-toggleswitch formControlName="isMainEvent" inputId="me" /><label for="me">Main event</label></div>
+                <div class="flex items-center gap-3"><p-toggleswitch formControlName="isDone" inputId="dn" /><label for="dn">Realizado</label></div>
+            </div>
+        </div>
+
+        <h3 class="text-lg font-semibold mt-6 mb-1">Participantes</h3>
+        <p class="text-sm text-muted-color mt-0 mb-3">Cada lado é um time (em lutas individuais, um lutador por lado). Clique na estrela para marcar o vencedor.</p>
+        <div class="grid grid-cols-12 gap-3">
+            @for (side of sides(); track side) {
+                <div class="col-span-12 sm:col-span-6 border border-surface-200 dark:border-surface-700 rounded-xl p-3">
+                    <div class="font-medium mb-2">Lado {{ side }}</div>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        @for (p of onSide(side); track p.wrestlerId) {
+                            <span class="inline-flex items-center gap-1 rounded-full pl-1 pr-2 py-1 text-sm" [class]="p.isWinner ? 'bg-primary text-primary-contrast' : 'bg-surface-100 dark:bg-surface-800'">
+                                <button type="button" class="bg-transparent border-0 cursor-pointer text-inherit p-1 flex" (click)="toggleWinner(p)" [attr.aria-label]="p.isWinner ? 'Vencedor' : 'Marcar como vencedor'">
+                                    <i [class]="p.isWinner ? 'pi pi-star-fill' : 'pi pi-star'"></i>
+                                </button>
+                                {{ wrestlerName(p.wrestlerId) }}
+                                <button type="button" class="bg-transparent border-0 cursor-pointer text-inherit p-1 flex" (click)="removeParticipant(p)" aria-label="Remover"><i class="pi pi-times text-xs"></i></button>
+                            </span>
+                        } @empty {
+                            <span class="text-sm text-muted-color">Ninguém neste lado.</span>
+                        }
+                    </div>
+                    <p-select [options]="available()" optionLabel="label" optionValue="value" [filter]="true" filterBy="label" placeholder="Adicionar lutador" appendTo="body" [ngModel]="null" [ngModelOptions]="{ standalone: true }" (ngModelChange)="addTo(side, $event)" fluid />
+                </div>
+            }
+        </div>
+        <div class="flex gap-2 mt-3">
+            <p-button type="button" label="Lado" icon="pi pi-plus" severity="secondary" text size="small" (onClick)="addSide()" />
+            @if (sideCount() > 1) {
+                <p-button type="button" label="Lado" icon="pi pi-minus" severity="secondary" text size="small" (onClick)="removeSide()" />
+            }
+        </div>
+
+        <div class="mt-4">
+            <label class="block font-medium mb-2">Notas</label>
+            <textarea pTextarea rows="2" formControlName="notes" class="w-full"></textarea>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+            <p-button type="button" label="Cancelar" severity="secondary" text (onClick)="ref.close()" />
+            <p-button type="submit" label="Salvar" icon="pi pi-check" [loading]="busy()" [disabled]="form.invalid || (hasStakes() && !form.value.cardDivisionId)" />
+        </div>
+    </form>
+}

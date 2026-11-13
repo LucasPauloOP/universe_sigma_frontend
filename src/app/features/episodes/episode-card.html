@@ -1,0 +1,79 @@
+<a routerLink="/episodes" class="inline-flex items-center gap-2 text-muted-color mb-3 no-underline"><i class="pi pi-arrow-left"></i>Episódios</a>
+@if (loading() && !episode()) {
+    <p-progressbar mode="indeterminate" [style]="{ height: '4px' }" />
+}
+
+@if (episode(); as e) {
+    <app-page-header [title]="heading(e)" [subtitle]="subtitle(e)">
+        <p-button [label]="statusLabel(e)" [icon]="e.status === 'DONE' ? 'pi pi-check-circle' : 'pi pi-clock'" severity="secondary" (onClick)="toggleStatus(e)" />
+        <p-button label="Segmento" icon="pi pi-plus" (onClick)="add()" />
+    </app-page-header>
+
+    @if (e.segments.length) {
+        <div class="flex flex-col gap-2" cdkDropList (cdkDropListDropped)="drop($event)">
+            @for (s of e.segments; track s.id; let i = $index) {
+                <div
+                    class="card flex items-center gap-3 !py-3 bg-surface-0 dark:bg-surface-900"
+                    [class.!border-primary]="s.isMainEvent"
+                    [class.ring-1]="s.isMainEvent"
+                    [class.ring-primary]="s.isMainEvent"
+                    cdkDrag
+                >
+                    <div class="cursor-grab text-muted-color flex" cdkDragHandle pTooltip="Arraste para reordenar"><i class="pi pi-bars"></i></div>
+                    <div class="w-7 text-center text-lg font-semibold">{{ i + 1 }}</div>
+                    <i [class]="'pi ' + typeIcon(s) + ' text-primary'"></i>
+                    <div class="flex-1 min-w-0" [class.opacity-70]="s.isDone">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <strong>{{ headline(s) }}</strong>
+                            @if (s.isMainEvent) {
+                                <p-tag value="MAIN EVENT" />
+                            }
+                            @if (s.title) {
+                                <p-tag severity="warn" [value]="s.title['name'] + (s.titleChanged ? ' · novo campeão' : '')" icon="pi pi-trophy" />
+                            }
+                            @if (stakesLabel(s); as st) {
+                                <p-tag severity="info" [value]="st" icon="pi pi-list-check" />
+                            }
+                            @if (finish(s)) {
+                                <p-tag severity="secondary" [value]="finish(s)" />
+                            }
+                        </div>
+                        @if (s.participants.length) {
+                            <div class="mt-1">
+                                @for (side of sides(s); track $index; let last = $last) {
+                                    <span>
+                                        @for (p of side; track p.wrestlerId; let lastP = $last) {
+                                            <span [class.font-semibold]="p.isWinner">
+                                                @if (p.isWinner) {
+                                                    <i class="pi pi-star-fill text-xs"></i>
+                                                }
+                                                {{ p.wrestler?.name }}</span
+                                            >{{ lastP ? '' : ' & ' }}
+                                        }
+                                    </span>
+                                    @if (!last) {
+                                        <span class="mx-2 text-muted-color text-sm">vs</span>
+                                    }
+                                }
+                            </div>
+                        }
+                        @if (s.notes) {
+                            <div class="text-muted-color text-sm mt-1">{{ s.notes }}</div>
+                        }
+                    </div>
+                    <p-checkbox [binary]="true" [ngModel]="s.isDone" (ngModelChange)="toggleDone(s, $event)" pTooltip="Realizado" />
+                    <p-button icon="pi pi-pencil" severity="secondary" text rounded (onClick)="edit(s)" aria-label="Editar" />
+                    <p-button icon="pi pi-trash" severity="danger" text rounded (onClick)="remove(s)" aria-label="Excluir" />
+                </div>
+            }
+        </div>
+    } @else if (!loading()) {
+        <div class="flex flex-col items-center gap-3 py-12 text-muted-color">
+            <i class="pi pi-list text-5xl"></i>
+            <p class="m-0">O card ainda está vazio.</p>
+            <p-button label="Adicionar o primeiro segmento" (onClick)="add()" />
+        </div>
+    }
+} @else if (!loading()) {
+    <p class="text-muted-color">Episódio não encontrado.</p>
+}
