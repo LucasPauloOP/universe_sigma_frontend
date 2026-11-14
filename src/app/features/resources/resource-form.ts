@@ -102,6 +102,26 @@ export class ResourceForm {
     constructor() {
         const keys = this.data.res.fields.filter((f) => f.ref).map((f) => f.ref!);
         void this.refs.loadMany(keys).then(() => this.ready.set(true));
+        if (!this.data.entity) this.setupAutofill();
+    }
+
+    /** Criação: escolher um ref preenche outros campos (sem pisar no que o usuário editou). */
+    private setupAutofill() {
+        for (const f of this.data.res.fields) {
+            const autofill = f.autofill;
+            if (!autofill) continue;
+            let last: Record<string, unknown> = {};
+            this.form.controls[f.key].valueChanges.subscribe((id) => {
+                const next = autofill(id, (k, i) => this.refs.list(k).find((e) => e.id === i));
+                for (const [key, value] of Object.entries(next)) {
+                    const c = this.form.controls[key];
+                    if (!c) continue;
+                    const empty = c.value === null || c.value === '' || c.value === undefined;
+                    if (empty || c.value === last[key]) c.setValue(value, { emitEvent: false });
+                }
+                last = next;
+            });
+        }
     }
 
     private buildForm() {
