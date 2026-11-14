@@ -115,6 +115,7 @@ export class ResourceList {
             const r = RESOURCES[f.ref];
             return this.refs
                 .list(f.ref)
+                .filter((e) => !f.refWhere || f.refWhere(e))
                 .map((e) => ({ value: e.id, label: r.label(e) }))
                 .sort((a, b) => a.label.localeCompare(b.label));
         }

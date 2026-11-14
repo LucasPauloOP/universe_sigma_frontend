@@ -65,7 +65,7 @@ export interface ResourceFormData {
                                         <p-datepicker [inputId]="'f-' + f.key" [formControlName]="f.key" dateFormat="dd/mm/yy" [showIcon]="true" [showButtonBar]="true" appendTo="body" fluid />
                                     }
                                     @case ('ref') {
-                                        <p-select [inputId]="'f-' + f.key" [formControlName]="f.key" [options]="options(f.ref!)" optionLabel="label" optionValue="value" [filter]="true" filterBy="label" [showClear]="!f.required" placeholder="Selecione" appendTo="body" fluid />
+                                        <p-select [inputId]="'f-' + f.key" [formControlName]="f.key" [options]="options(f.ref!, f.refWhere)" optionLabel="label" optionValue="value" [filter]="true" filterBy="label" [showClear]="!f.required" placeholder="Selecione" appendTo="body" fluid />
                                     }
                                     @case ('refMulti') {
                                         <p-multiselect [inputId]="'f-' + f.key" [formControlName]="f.key" [options]="options(f.ref!)" optionLabel="label" optionValue="value" [filter]="true" filterBy="label" display="chip" placeholder="Selecione" appendTo="body" [maxSelectedLabels]="50" fluid />
@@ -117,11 +117,12 @@ export class ResourceForm {
     }
 
     /** Opções {value, label} de um recurso referenciado. */
-    protected options(key: string): { value: string; label: string }[] {
+    protected options(key: string, where?: (e: Entity) => boolean): { value: string; label: string }[] {
         this.refs.version();
         const r = RESOURCES[key];
         return this.refs
             .list(key)
+            .filter((e) => !where || where(e))
             .map((e) => ({ value: e.id, label: r?.label(e) ?? (e['name'] as string) }))
             .sort((a, b) => a.label.localeCompare(b.label));
     }

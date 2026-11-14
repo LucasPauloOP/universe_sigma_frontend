@@ -10,6 +10,12 @@ export const appRoutes: Routes = [
         title: 'Entrar'
     },
     {
+        path: 'forgot-password',
+        canActivate: [guestGuard],
+        loadComponent: () => import('./features/auth/forgot-password').then((m) => m.ForgotPassword),
+        title: 'Esqueci a senha'
+    },
+    {
         path: 'register',
         canActivate: [guestGuard],
         loadComponent: () => import('./features/auth/register').then((m) => m.Register),

@@ -3,6 +3,7 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
+import { DialogService } from 'primeng/dynamicdialog';
 import { ButtonModule } from 'primeng/button';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { SelectModule } from 'primeng/select';
@@ -13,7 +14,9 @@ import { fmtDate } from '../../core/format';
 import { CardDivision, DivisionEntry } from '../../core/models';
 import { Refs } from '../../core/refs';
 import { UniverseStore } from '../../core/universe-store';
+import { openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
+import { ChampionDialog } from './champion-dialog';
 
 const entryKey = (e: { wrestlerId?: string | null; teamId?: string | null }) => (e.wrestlerId ? `w:${e.wrestlerId}` : `t:${e.teamId}`);
 
@@ -27,6 +30,7 @@ export class DivisionsBoard {
     private readonly refs = inject(Refs);
     private readonly store = inject(UniverseStore);
     private readonly toast = inject(MessageService);
+    private readonly dialogs = inject(DialogService);
 
     protected readonly loading = signal(true);
     protected readonly divisions = signal<CardDivision[]>([]);
@@ -141,6 +145,16 @@ export class DivisionsBoard {
     protected async toTop(d: CardDivision, e: DivisionEntry) {
         const k = entryKey(e);
         await this.save(d, [k, ...d.entries.map(entryKey).filter((x) => x !== k)]);
+    }
+
+    /** Troca/corrige o campeão do título da divisão. */
+    protected async editChampion(d: CardDivision) {
+        const updated = await openDialog<CardDivision>(this.dialogs, ChampionDialog, `Campeão — ${d.name}`, { division: d }, '34rem');
+        if (!updated) return;
+        this.divisions.update((list) => list.map((x) => (x.id === d.id ? updated : x)));
+        // outras divisões do mesmo título (ex.: compartilhadas) também mudam de fila
+        await this.load();
+        this.toast.add({ severity: 'success', summary: 'Campeão atualizado', life: 3000 });
     }
 
     protected async createDefaults() {
