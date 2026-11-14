@@ -41,6 +41,8 @@ export interface Field {
   refWhere?: (e: Entity) => boolean;
   /** só aparece quando retorna true (recebe os valores atuais) */
   showIf?: (values: Record<string, any>) => boolean;
+  /** Valor enviado ao editar quando o campo está escondido (padrão: null). */
+  hiddenValue?: unknown;
 }
 
 export interface Column {
@@ -397,7 +399,7 @@ export const RESOURCES: Record<string, Resource> = {
       { key: 'weekday', label: 'Dia da semana em que acontece', type: 'select', options: WEEKDAYS.map((label, value) => ({ value, label })), hint: 'Define a data dos episódios: semana 2 = a 2ª ocorrência desse dia no mês. Vazio: semanal = segunda, PLE = sábado.' },
       { key: 'ppvMonth', label: 'Mês do PLE', type: 'select', options: MONTHS.map((label, i) => ({ value: i + 1, label })), showIf: (v) => v['kind'] !== 'WEEKLY' },
       { key: 'ppvWeek', label: 'Semana do PLE', type: 'select', options: [1, 2, 3, 4].map((n) => ({ value: n, label: `Semana ${n}` })), showIf: (v) => v['kind'] !== 'WEEKLY' },
-      { key: 'nights', label: 'Noites', type: 'select', required: true, default: 1, options: [{ value: 1, label: '1 noite' }, { value: 2, label: '2 noites (Noite 1 e Noite 2)' }], showIf: (v) => v['kind'] !== 'WEEKLY', hint: 'Cada noite vira um episódio com o seu próprio card (use “Gerar episódios”).' },
+      { key: 'nights', label: 'Noites', type: 'select', required: true, default: 1, hiddenValue: 1, options: [{ value: 1, label: '1 noite' }, { value: 2, label: '2 noites (Noite 1 e Noite 2)' }], showIf: (v) => v['kind'] !== 'WEEKLY', hint: 'Cada noite vira um episódio com o seu próprio card (use “Gerar episódios”).' },
       { ...isActive, label: 'Show ativo', hint: 'Desativar apaga todos os episódios do show' },
       image,
     ],
@@ -478,7 +480,7 @@ export function buildBody(
   for (const f of res.fields) {
     if (f.showIf && !f.showIf(values)) {
       // campo escondido: limpa o valor ao editar
-      if (original) body[f.key] = null;
+      if (original) body[f.key] = f.hiddenValue ?? null;
       continue;
     }
     let v = values[f.key];
