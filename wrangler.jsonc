@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "universe-sigma-frontend",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist/universe-sigma/browser",
+    "not_found_handling": "single-page-application"
+  }
+}
