@@ -43,6 +43,12 @@ export interface Field {
   showIf?: (values: Record<string, any>) => boolean;
   /** Valor enviado ao editar quando o campo está escondido (padrão: null). */
   hiddenValue?: unknown;
+  /**
+   * Só na criação: ao escolher este campo, sugere valores para outros campos
+   * (ex.: episódio herda título e imagem do show). Só sobrescreve campos vazios
+   * ou ainda com a sugestão anterior, nunca o que o usuário digitou.
+   */
+  autofill?: (id: string | null, find: (key: string, id: string) => Entity | undefined) => Record<string, unknown>;
 }
 
 export interface Column {
@@ -421,7 +427,13 @@ export const RESOURCES: Record<string, Resource> = {
       { key: 'status', label: 'Status', render: (e) => labelOfOption(EPISODE_STATUS, e['status']) },
     ],
     fields: [
-      { key: 'showId', label: 'Show', type: 'ref', ref: 'shows', required: true },
+      {
+        key: 'showId', label: 'Show', type: 'ref', ref: 'shows', required: true,
+        autofill: (id, find) => {
+          const show = id ? find('shows', id) : undefined;
+          return { title: show?.['name'] ?? '', imageUrl: show?.['imageUrl'] ?? null };
+        },
+      },
       { key: 'seasonId', label: 'Temporada', type: 'ref', ref: 'seasons', required: true },
       { key: 'title', label: 'Título', type: 'text' },
       { key: 'month', label: 'Mês', type: 'select', required: true, options: MONTHS.map((label, i) => ({ value: i + 1, label })) },
