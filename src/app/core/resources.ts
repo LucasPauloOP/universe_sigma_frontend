@@ -37,6 +37,8 @@ export interface Field {
   fromEntity?: (e: Entity) => unknown;
   /** valor do formulário -> corpo do request */
   toBody?: (v: any) => unknown;
+  /** ref / refMulti: só lista os registros que passam no filtro (ex.: só facções) */
+  refWhere?: (e: Entity) => boolean;
   /** só aparece quando retorna true (recebe os valores atuais) */
   showIf?: (values: Record<string, any>) => boolean;
 }
@@ -205,15 +207,18 @@ export const RESOURCES: Record<string, Resource> = {
 
   teams: {
     key: 'teams', singular: 'Dupla / Facção', plural: 'Duplas e Facções', icon: 'users', group: 'Roster',
-    label: byName, filters: ['kind'],
+    label: byName, filters: ['kind', 'factionId'],
     columns: [
       { key: 'imageUrl', label: '', type: 'image' },
       { key: 'name', label: 'Nome' },
       { key: 'kind', label: 'Tipo', render: (e) => labelOfOption(TEAM_KIND, e['kind']) },
+      { key: 'faction', label: 'Facção', render: (e) => e['faction']?.name ?? '' },
+      { key: 'subTeams', label: 'Duplas da facção', type: 'chips', render: (e) => (e['subTeams'] ?? []).map((t: Entity) => t['name']).join('|') },
       { key: 'members', label: 'Integrantes', type: 'chips', render: (e) => (e['members'] ?? []).map((m: Entity) => m['wrestler']?.name).join('|') },
     ],
     fields: [
       name(), { key: 'kind', label: 'Tipo', type: 'select', options: TEAM_KIND, default: 'TAG_TEAM' },
+      { key: 'factionId', label: 'Facção', type: 'ref', ref: 'teams', refWhere: (t) => t['kind'] === 'FACTION', hint: 'Opcional: a dupla faz parte de uma facção (ex.: Creed Brothers em American Made).', showIf: (v) => v['kind'] !== 'FACTION' },
       { key: 'memberIds', label: 'Integrantes', type: 'refMulti', ref: 'wrestlers', full: true, default: [], fromEntity: (e) => (e['members'] ?? []).map((m: Entity) => m['wrestlerId']) },
       image,
     ],

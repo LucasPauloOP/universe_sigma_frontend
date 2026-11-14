@@ -40,6 +40,15 @@ export class Auth {
     if (res.universe) this.store.select(res.universe.id);
   }
 
+  /** Confirma que o e-mail existe (lança 404 se não existir). */
+  async checkEmail(email: string) {
+    await firstValueFrom(this.http.post(`${API_BASE}/auth/forgot-password`, { email }));
+  }
+
+  async resetPassword(email: string, password: string) {
+    await firstValueFrom(this.http.post(`${API_BASE}/auth/reset-password`, { email, password }));
+  }
+
   /** Restaura a sessão após F5: valida o token e carrega os universes. */
   async restore() {
     if (!this.token() || this.user()) return;

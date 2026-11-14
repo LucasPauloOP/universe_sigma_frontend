@@ -41,7 +41,10 @@
 
             @if (d.title) {
                 <div class="rounded-xl p-3 bg-primary text-primary-contrast">
-                    <div class="text-xs uppercase tracking-wide opacity-80"><i class="pi pi-crown mr-1"></i>Campeão</div>
+                    <div class="flex items-center justify-between">
+                        <div class="text-xs uppercase tracking-wide opacity-80"><i class="pi pi-crown mr-1"></i>Campeão</div>
+                        <p-button icon="pi pi-pencil" severity="contrast" text rounded size="small" pTooltip="Alterar campeão" (onClick)="editChampion(d)" aria-label="Alterar campeão" />
+                    </div>
                     @if (d.champions.length) {
                         <div class="font-semibold">{{ champion(d) }}</div>
                         @if (d.championSince) {

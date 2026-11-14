@@ -32,6 +32,7 @@ import { AuthShell } from './auth-shell';
                     @if (form.controls.password.invalid && form.controls.password.touched) {
                         <small class="text-red-500">Informe a senha.</small>
                     }
+                    <a routerLink="/forgot-password" class="block text-sm text-primary mt-2">Esqueci a senha</a>
                 </div>
                 <p-button type="submit" label="Entrar" [loading]="busy()" fluid />
             </form>
