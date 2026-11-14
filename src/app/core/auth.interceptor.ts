@@ -7,6 +7,7 @@ import { MessageService } from 'primeng/api';
 import { catchError, finalize, throwError } from 'rxjs';
 import { Loading } from './loading';
 import { Auth } from './auth';
+import { API_BASE } from './api';
 
 /** Anexa o token e mostra qualquer erro da API como snackbar. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
@@ -17,7 +18,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const isAuthCall = /\/auth\/(login|register)$/.test(req.url);
 
   const authed =
-    token && req.url.startsWith('/api')
+    token && req.url.startsWith(API_BASE)
       ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
       : req;
 

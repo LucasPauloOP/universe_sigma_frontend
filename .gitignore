@@ -45,3 +45,4 @@ Thumbs.db
 
 # Chave de licença PrimeUI (segredo)
 /src/license.local.ts
+CLAUDE.md

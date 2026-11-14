@@ -1,11 +1,12 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { environment } from '../../environments/environment';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { Entity, Page } from './models';
 import { UniverseStore } from './universe-store';
 
 /** Base da API. Em dev o proxy (proxy.conf.json) encaminha /api para o backend. */
-export const API_BASE = '/api';
+export const API_BASE = `${environment.apiOrigin}/api`;
 
 type Params = Record<string, string | number | boolean | undefined | null>;
 
@@ -66,6 +67,11 @@ export class Api {
 
   delete(path: string): Promise<unknown> {
     return firstValueFrom(this.http.delete(this.url(path)));
+  }
+
+  /** POST multipart (arquivo + campos de texto). */
+  postForm<T = Entity>(path: string, body: FormData): Promise<T> {
+    return firstValueFrom(this.http.post<T>(this.url(path), body));
   }
 
   /** Upload de imagem: devolve { imageUrl (salvar), url (preview) }. */

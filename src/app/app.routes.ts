@@ -41,6 +41,13 @@ export const appRoutes: Routes = [
                 loadComponent: () => import('./features/resources/resource-list').then((m) => m.ResourceList)
             },
             {
+                path: 'import',
+                canActivate: [universeGuard],
+                data: { breadcrumb: 'Importar planilha' },
+                loadComponent: () => import('./features/import/import-page').then((m) => m.ImportPage),
+                title: 'Importar planilha'
+            },
+            {
                 path: 'divisions',
                 canActivate: [universeGuard],
                 data: { breadcrumb: 'Divisões' },

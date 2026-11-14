@@ -1,0 +1,183 @@
+<app-page-header title="Importar planilha" subtitle="Reconhece os rosters de cada show, as divisões (colocações) e os PLEs a partir da sua planilha do universe." />
+
+<div class="card mb-4">
+    <h2 class="text-lg font-semibold mt-0 mb-1">1. Escolha a planilha</h2>
+    <p class="text-sm text-muted-color mt-0 mb-4">
+        Formato esperado (.xlsx): aba <b>Roster completo</b> (uma coluna por brand e “… Tag teams”), uma aba por brand (ex.: <b>raw</b>, <b>smackdown</b>) com as colunas
+        Main Card, Mid Card, Tags, Women’s World/Mid/Tag, Legends e Others, e a aba <b>PLEs</b>. As outras abas (como Shows) são ignoradas.
+    </p>
+    <div class="flex flex-wrap items-center gap-3">
+        <p-button label="Escolher arquivo" icon="pi pi-file-excel" severity="secondary" (onClick)="fileInput.click()" />
+        <span class="text-muted-color">{{ file()?.name ?? 'Nenhum arquivo escolhido' }}</span>
+        <input #fileInput type="file" hidden accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="pick($event)" />
+    </div>
+</div>
+
+<div class="card mb-4">
+    <h2 class="text-lg font-semibold mt-0 mb-3">2. O que importar</h2>
+    <div class="flex flex-col gap-3">
+        @for (o of optionLabels; track o.key) {
+            <div class="flex items-start gap-3">
+                <p-toggleswitch [inputId]="'o-' + o.key" [ngModel]="options()[o.key]" (ngModelChange)="setOption(o.key, $event)" />
+                <label [for]="'o-' + o.key" class="cursor-pointer">
+                    <span class="font-medium">{{ o.label }}</span>
+                    @if (o.hint) {
+                        <span class="block text-sm text-muted-color">{{ o.hint }}</span>
+                    }
+                </label>
+            </div>
+        }
+    </div>
+    <div class="mt-5">
+        <p-button label="Analisar planilha" icon="pi pi-search" [disabled]="!file()" [loading]="busy() && !report()" (onClick)="analyze()" />
+        <span class="text-sm text-muted-color ml-3">Nada é gravado nesta etapa.</span>
+    </div>
+</div>
+
+@if (result(); as r) {
+    <div class="card mb-4 border-l-4 !border-l-primary">
+        <h2 class="text-lg font-semibold mt-0 mb-3"><i class="pi pi-check-circle text-primary mr-2"></i>Importação concluída</h2>
+        <ul class="m-0 pl-5 flex flex-col gap-1">
+            <li>{{ r.linksAdded }} vínculos de roster adicionados e {{ r.linksRemoved }} removidos</li>
+            <li>{{ r.wrestlersCreated }} lutadores e {{ r.teamsCreated }} duplas criados; {{ r.activated }} ativados{{ r.deactivated ? '; ' + r.deactivated + ' desativados' : '' }}</li>
+            <li>{{ r.divisionsFilled }} divisões preenchidas</li>
+            <li>PLEs: {{ r.plesCreated }} criados, {{ r.plesUpdated }} ajustados{{ r.plesDeactivated ? ', ' + r.plesDeactivated + ' desativados' : '' }}</li>
+        </ul>
+        @if (r.divisionsMissing.length) {
+            <p class="text-sm text-muted-color mb-0 mt-3">Divisões não encontradas (não preenchidas): {{ r.divisionsMissing.join(', ') }}.</p>
+        }
+        <div class="flex flex-wrap gap-2 mt-4">
+            <p-button label="Ver divisões" icon="pi pi-list-check" routerLink="/divisions" />
+            <p-button label="Gerar episódios dos PLEs" icon="pi pi-calendar-plus" severity="secondary" routerLink="/episodes" />
+        </div>
+    </div>
+}
+
+@if (report(); as r) {
+    <div class="card mb-4">
+        <h2 class="text-lg font-semibold mt-0 mb-1">3. Confira antes de importar</h2>
+        <p class="text-sm text-muted-color mt-0 mb-4">Isto é só uma prévia: nada foi gravado ainda.</p>
+
+        @if (r.warnings.length) {
+            <div class="rounded-lg px-4 py-3 mb-4 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 text-sm">
+                @for (w of r.warnings; track $index) {
+                    <div><i class="pi pi-exclamation-triangle mr-2"></i>{{ w }}</div>
+                }
+            </div>
+        }
+
+        <h3 class="text-base font-semibold mb-2">Rosters e divisões por brand</h3>
+        <div class="grid grid-cols-12 gap-4 mb-6">
+            @for (b of r.brands; track b.brand) {
+                <div class="col-span-12 lg:col-span-6">
+                    <div class="rounded-xl border border-surface-200 dark:border-surface-700 p-4 h-full">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="font-semibold text-lg">{{ b.brand }}</span>
+                            @if (!b.isActive) {
+                                <p-tag value="Brand desativada" severity="warn" />
+                            }
+                        </div>
+                        <div class="text-sm mb-3">
+                            Roster na planilha: <b>{{ b.roster }}</b>
+                            · <span class="text-green-600 dark:text-green-400">+{{ b.add }} entram</span>
+                            · <span class="text-red-600 dark:text-red-400">−{{ b.remove }} saem</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">
+                            @for (d of b.divisions; track d.name) {
+                                <span class="text-xs rounded-full px-2.5 py-1 bg-surface-100 dark:bg-surface-800">{{ d.name }}: <b>{{ d.count }}</b></span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="grid grid-cols-12 gap-4 mb-6">
+            <div class="col-span-12 lg:col-span-6">
+                <h3 class="text-base font-semibold mb-2">Lutadores a criar ({{ r.newWrestlers.length }})</h3>
+                @if (r.newWrestlers.length) {
+                    <div class="flex flex-wrap gap-1.5">
+                        @for (w of r.newWrestlers; track w.name) {
+                            <span class="text-xs rounded-full px-2.5 py-1 bg-surface-100 dark:bg-surface-800">
+                                <i [class]="w.gender === 'W' ? 'pi pi-venus text-pink-500' : 'pi pi-mars text-blue-500'"></i>
+                                {{ w.name }}{{ contractLabel(w.contractType) ? ' · ' + contractLabel(w.contractType) : '' }}
+                            </span>
+                        }
+                    </div>
+                    @if (r.assumedMale.length) {
+                        <p class="text-xs text-muted-color mt-2 mb-0">Gênero masculino assumido para quem não aparece em coluna feminina; ajuste depois em Lutadores se precisar.</p>
+                    }
+                } @else {
+                    <p class="text-muted-color text-sm m-0">Todos os nomes já existem no universe.</p>
+                }
+            </div>
+            <div class="col-span-12 lg:col-span-6">
+                <h3 class="text-base font-semibold mb-2">Duplas a criar ({{ r.newTeams.length }})</h3>
+                @if (r.newTeams.length) {
+                    <ul class="m-0 pl-5 text-sm">
+                        @for (t of r.newTeams; track t.name) {
+                            <li>{{ t.name }}{{ t.members.length ? ' — ' + t.members.join(' e ') : ' (sem integrantes)' }}</li>
+                        }
+                    </ul>
+                } @else {
+                    <p class="text-muted-color text-sm m-0">Nenhuma dupla nova.</p>
+                }
+            </div>
+        </div>
+
+        @if (options().importPles) {
+            <h3 class="text-base font-semibold mb-2">PLEs</h3>
+            <div class="grid grid-cols-12 gap-4 mb-6">
+                <div class="col-span-12 lg:col-span-4">
+                    <div class="text-sm font-medium mb-1">A criar ({{ r.ples.create.length }})</div>
+                    @for (p of r.ples.create; track p.name) {
+                        <div class="text-sm">{{ p.name }} <span class="text-muted-color">· {{ monthName(p.ppvMonth) }}, semana {{ p.ppvWeek }}</span></div>
+                    } @empty {
+                        <div class="text-sm text-muted-color">—</div>
+                    }
+                </div>
+                <div class="col-span-12 lg:col-span-4">
+                    <div class="text-sm font-medium mb-1">Mês/semana ajustados ({{ r.ples.update.length }})</div>
+                    @for (p of r.ples.update; track p.id) {
+                        <div class="text-sm">{{ p.name }} <span class="text-muted-color">· {{ monthName(p.from.month) }} → {{ monthName(p.to.month) }}, semana {{ p.to.week }}</span></div>
+                    } @empty {
+                        <div class="text-sm text-muted-color">—</div>
+                    }
+                </div>
+                <div class="col-span-12 lg:col-span-4">
+                    <div class="text-sm font-medium mb-1">Não estão na planilha ({{ r.ples.unlisted.length }})</div>
+                    @for (p of r.ples.unlisted; track p.id) {
+                        <div class="text-sm">{{ p.name }}</div>
+                    } @empty {
+                        <div class="text-sm text-muted-color">—</div>
+                    }
+                    @if (r.ples.unlisted.length) {
+                        <div class="text-xs text-muted-color mt-1">{{ options().deactivateUnlistedPles ? 'Serão desativados (episódios apagados).' : 'Ficam como estão.' }}</div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (r.fuzzy.length) {
+            <details class="mb-4">
+                <summary class="cursor-pointer font-medium">Nomes corrigidos por semelhança ({{ r.fuzzy.length }}) — confira</summary>
+                <ul class="mt-2 mb-0 pl-5 text-sm">
+                    @for (f of r.fuzzy; track f.from + f.to) {
+                        <li>“{{ f.from }}” → <b>{{ f.to }}</b></li>
+                    }
+                </ul>
+            </details>
+        }
+        @if (r.ignored.length) {
+            <p class="text-sm text-muted-color mb-4">Ignorado: {{ r.ignored.join(', ') }}.</p>
+        }
+        @if (r.skippedMissing.length) {
+            <p class="text-sm text-muted-color mb-4">Não encontrados (não criados): {{ r.skippedMissing.join(', ') }}.</p>
+        }
+
+        <div class="flex items-center gap-3">
+            <p-button label="Importar" icon="pi pi-check" [loading]="busy()" (onClick)="apply()" />
+            <span class="text-sm text-muted-color">Rodar de novo é seguro: o que já foi importado não é duplicado.</span>
+        </div>
+    </div>
+}

@@ -31,6 +31,7 @@ export class AppMenu {
             path: '/g/home',
             items: [
                 ...(this.store.currentId() ? [{ label: 'Painel', icon: 'pi pi-fw pi-chart-bar', routerLink: ['/dashboard'] }] : []),
+                ...(this.store.currentId() ? [{ label: 'Importar planilha', icon: 'pi pi-fw pi-upload', routerLink: ['/import'] }] : []),
                 { label: 'Meus universes', icon: 'pi pi-fw pi-globe', routerLink: ['/universes'] }
             ]
         };
