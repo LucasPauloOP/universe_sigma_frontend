@@ -39,6 +39,9 @@
                             @if (tournamentLabel(s); as tl) {
                                 <p-tag severity="warn" [value]="tl" icon="pi pi-sitemap" />
                             }
+                            @if (rivalryLabel(s); as rl) {
+                                <p-tag severity="danger" [value]="rl" icon="pi pi-bolt" />
+                            }
                             @if (stakesLabel(s); as st) {
                                 <p-tag severity="info" [value]="st" icon="pi pi-list-check" />
                             }

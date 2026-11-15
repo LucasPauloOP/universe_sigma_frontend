@@ -61,6 +61,11 @@ export interface Segment extends Entity {
   cardDivisionId: string | null;
   cardDivision?: Entity | null;
   rankingApplied?: boolean;
+  startsRivalry?: boolean;
+  endsRivalry?: boolean;
+  rivalryApplied?: boolean;
+  rivalryId?: string | null;
+  rivalry?: { id: string; name: string; isActive: boolean; winnerSide: number | null } | null;
   tournamentMatch?: (Entity & { round: number; slot: number; groupName: string | null; tournament: Entity }) | null;
   matchType?: Entity | null;
   title?: Entity | null;

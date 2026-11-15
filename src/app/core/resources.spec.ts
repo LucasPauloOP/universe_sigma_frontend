@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fmtDate, isoToLocalDate, localDateToIso } from './format';
-import { RESOURCES, buildBody } from './resources';
+import { RESOURCES, buildBody, rivalrySides, rivalryWinner } from './resources';
 
 describe('datas', () => {
   it('formata ISO em dd/mm/aaaa sem deslocar o dia', () => {
@@ -57,5 +57,34 @@ describe('buildBody', () => {
     const body = buildBody(RESOURCES['shows'], { name: 'RAW', kind: 'WEEKLY', weekday: 1, ppvMonth: 3 });
     expect(body['weekday']).toBe(1);
     expect(body).not.toHaveProperty('ppvMonth');
+  });
+});
+
+describe('rivalidades', () => {
+  const rivalry = {
+    id: 'r1',
+    winnerSide: 2,
+    members: [
+      { side: 1, wrestlerId: 'w1', wrestler: { name: 'Cena' } },
+      { side: 2, teamId: 't1', team: { name: 'Usos' } },
+      { side: 2, wrestlerId: 'w2', wrestler: { name: 'Solo' } },
+    ],
+  };
+
+  it('mostra os envolvidos por lado e o ganhador', () => {
+    expect(rivalrySides(rivalry)).toEqual([['Cena'], ['Usos', 'Solo']]);
+    expect(rivalryWinner(rivalry)).toBe('Usos & Solo');
+    expect(rivalryWinner({ ...rivalry, winnerSide: null })).toBe('');
+  });
+
+  it('o formulário lê os lados da rivalidade e envia o ganhador como número', () => {
+    const res = RESOURCES['rivalries'];
+    const field = (k: string) => res.fields.find((f) => f.key === k)!;
+    expect(field('sideAWrestlerIds').fromEntity!(rivalry)).toEqual(['w1']);
+    expect(field('sideBTeamIds').fromEntity!(rivalry)).toEqual(['t1']);
+    expect(field('sideBWrestlerIds').fromEntity!(rivalry)).toEqual(['w2']);
+    expect(field('winnerSide').fromEntity!(rivalry)).toBe('2');
+    expect(field('winnerSide').toBody!('2')).toBe(2);
+    expect(field('winnerSide').toBody!(null)).toBeNull();
   });
 });
