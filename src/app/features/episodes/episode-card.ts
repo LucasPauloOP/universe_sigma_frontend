@@ -18,6 +18,7 @@ import { confirmAction, openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
 import { DivisionRanking } from './division-ranking';
 import { SegmentDialog } from './segment-dialog';
+import { SuggestSegmentsData, SuggestSegmentsDialog } from './suggest-segments-dialog';
 
 @Component({
     selector: 'app-episode-card',
@@ -157,6 +158,11 @@ export class EpisodeCardPage {
         } finally {
             await this.load();
         }
+    }
+
+    protected async suggest(e: EpisodeCard) {
+        const saved = await openDialog<number>(this.dialogs, SuggestSegmentsDialog, 'Gerar segmentos com IA', { episodeId: e.id, episodeLabel: this.heading(e) } satisfies SuggestSegmentsData, '48rem');
+        if (saved) await this.load();
     }
 
     protected async add() {

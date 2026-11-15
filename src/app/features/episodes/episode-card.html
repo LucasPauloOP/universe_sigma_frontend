@@ -7,6 +7,7 @@
     <app-page-header [title]="heading(e)" [subtitle]="subtitle(e)">
         <p-button [label]="statusLabel(e)" [icon]="e.status === 'DONE' ? 'pi pi-check-circle' : 'pi pi-clock'" severity="secondary" (onClick)="toggleStatus(e)" />
         <p-button [label]="rankingOpen() ? 'Ocultar ranking' : 'Ranking'" icon="pi pi-list-check" severity="secondary" [outlined]="true" (onClick)="rankingOpen.set(!rankingOpen())" pTooltip="Ranking das divisões para planejar o card" />
+        <p-button label="Gerar com IA" icon="pi pi-sparkles" severity="secondary" (onClick)="suggest(e)" pTooltip="Sugere os segmentos com IA, a partir dos rankings e rivalidades" />
         <p-button label="Segmento" icon="pi pi-plus" (onClick)="add()" />
     </app-page-header>
 
