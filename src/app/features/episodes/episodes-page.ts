@@ -14,7 +14,7 @@ import { Api } from '../../core/api';
 import { GAME_WEEKDAYS, MONTHS, SEASON_MONTHS, beforeStart, compareEpisodes, gameDayName, gameDayOffset, gameWeek } from '../../core/format';
 import { Entity } from '../../core/models';
 import { Refs } from '../../core/refs';
-import { RESOURCES } from '../../core/resources';
+import { EPISODE_STATUS, EPISODE_STATUS_COLOR, EPISODE_STATUS_SEVERITY, RESOURCES, labelOfOption, reopenedStatus } from '../../core/resources';
 import { UniverseStore } from '../../core/universe-store';
 import { confirmAction, openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
@@ -165,7 +165,7 @@ export class EpisodesPage {
             this.seasons.set(seasons.sort((a, b) => a['number'] - b['number']));
             if (!this.seasons().some((s) => s.id === this.seasonId())) {
                 // temporada em andamento: a primeira que ainda tem episódio planejado
-                const current = this.seasons().find((s) => episodes.some((e) => e['seasonId'] === s.id && e['status'] === 'PLANNED'));
+                const current = this.seasons().find((s) => episodes.some((e) => e['seasonId'] === s.id && e['status'] !== 'DONE'));
                 this.seasonId.set((current ?? this.seasons().at(-1))?.id ?? null);
             }
         } catch {
@@ -194,21 +194,33 @@ export class EpisodesPage {
         return e['night'] ? `${when} · Noite ${e['night']}` : when;
     }
 
-    protected accent(e: Entity): string {
-        return e['show']?.brand?.color ?? 'var(--p-primary-color)';
+    protected statusColor(e: Entity): string {
+        return EPISODE_STATUS_COLOR[e['status']] ?? 'var(--p-surface-300)';
+    }
+
+    protected statusSeverity(e: Entity) {
+        return EPISODE_STATUS_SEVERITY[e['status']] ?? 'secondary';
+    }
+
+    protected statusLabel(e: Entity): string {
+        return labelOfOption(EPISODE_STATUS, e['status']);
     }
 
     protected menuFor(e: Entity): MenuItem[] {
         return [
             { label: 'Abrir card', icon: 'pi pi-list', command: () => this.open(e) },
-            { label: e['status'] === 'DONE' ? 'Marcar como planejado' : 'Marcar como realizado', icon: e['status'] === 'DONE' ? 'pi pi-clock' : 'pi pi-check-circle', command: () => this.toggleStatus(e) },
+            { label: e['status'] === 'DONE' ? (this.segmentsOf(e) > 0 ? 'Marcar como planejado' : 'Marcar como sem planejamento') : 'Marcar como realizado', icon: e['status'] === 'DONE' ? 'pi pi-clock' : 'pi pi-check-circle', command: () => this.toggleStatus(e) },
             { label: 'Editar', icon: 'pi pi-pencil', command: () => this.edit(e) },
             { label: 'Excluir', icon: 'pi pi-trash', styleClass: 'text-red-500', command: () => this.remove(e) }
         ];
     }
 
+    private segmentsOf(e: Entity): number {
+        return e['_count']?.segments ?? 0;
+    }
+
     protected async toggleStatus(e: Entity) {
-        await this.api.put(`episodes/${e.id}`, { status: e['status'] === 'DONE' ? 'PLANNED' : 'DONE' }).catch(() => null);
+        await this.api.put(`episodes/${e.id}`, { status: e['status'] === 'DONE' ? reopenedStatus(this.segmentsOf(e)) : 'DONE' }).catch(() => null);
         await this.load();
     }
 

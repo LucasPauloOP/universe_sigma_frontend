@@ -12,7 +12,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { Api } from '../../core/api';
 import { MONTHS, gameDayName, roundTitle } from '../../core/format';
 import { EpisodeCard, Participant, Segment } from '../../core/models';
-import { EPISODE_STATUS, FINISH_TYPE, labelOfOption } from '../../core/resources';
+import { EPISODE_STATUS, FINISH_TYPE, labelOfOption, reopenedStatus } from '../../core/resources';
 import { resultProblem } from '../../core/segment-result';
 import { confirmAction, openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
@@ -118,7 +118,7 @@ export class EpisodeCardPage {
     }
 
     protected async toggleStatus(e: EpisodeCard) {
-        const status = e.status === 'DONE' ? 'PLANNED' : 'DONE';
+        const status = e.status === 'DONE' ? reopenedStatus(e.segments.length) : 'DONE';
         await this.api.put(`episodes/${e.id}`, { status });
         this.episode.set({ ...e, status });
     }

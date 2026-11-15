@@ -71,13 +71,14 @@ export interface EpisodeCard extends Entity {
   seasonId: string;
   month: number;
   week: number | null;
-  status: 'PLANNED' | 'DONE';
+  status: 'UNPLANNED' | 'PLANNED' | 'DONE';
   segments: Segment[];
 }
 
 export interface Entrant extends Entity {
   tournamentId: string;
   seed: number | null;
+  startRound?: number;
   wrestlerId: string | null;
   teamId: string | null;
   wrestler?: Wrestler | null;

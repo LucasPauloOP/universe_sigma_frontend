@@ -17,7 +17,7 @@ import { confirmAction, openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
 import { MatchDialog, competitorsOf, entrantName } from './match-dialog';
 import { ScheduleDialog, ScheduleResult } from './schedule-dialog';
-import { episodeText, roundTitle } from '../../core/format';
+import { episodeText, roundName, roundTitle, totalRounds } from '../../core/format';
 
 interface Round { round: number; title: string; matches: TournamentMatch[] }
 interface Group { name: string; matches: TournamentMatch[] }
@@ -64,6 +64,24 @@ export class TournamentPage {
 
   protected readonly newEntrant = signal<string | null>(null);
   protected readonly newSeed = signal<number | null>(null);
+  protected readonly newStartRound = signal<number>(1);
+
+  /** Rodadas em que um inscrito pode entrar (1 = início; depois quartas, semis...). */
+  protected readonly startRoundOptions = computed(() => {
+    const t = this.data()?.tournament;
+    if (!t) return [];
+    const total = totalRounds({ size: t['size'], firstRoundMatches: t['firstRoundMatches'] });
+    return Array.from({ length: total }, (_, i) => ({
+      value: i + 1,
+      label: i === 0 ? 'Desde o início (rodada 1)' : roundName(i + 1, total),
+    }));
+  });
+
+  protected startsAt(e: Entrant): string {
+    const t = this.data()?.tournament;
+    if (!t || !e.startRound || e.startRound < 2) return '';
+    return roundName(e.startRound, totalRounds({ size: t['size'], firstRoundMatches: t['firstRoundMatches'] }));
+  }
 
   protected readonly isRoundRobin = computed(() => this.data()?.tournament['format'] === 'ROUND_ROBIN');
 
@@ -155,9 +173,11 @@ export class TournamentPage {
       tournamentId: d.tournament.id,
       [d.tournament['isTag'] ? 'teamId' : 'wrestlerId']: picked,
       ...(seed ? { seed } : {}),
+      startRound: this.newStartRound(),
     }).catch(() => null);
     this.newEntrant.set(null);
     this.newSeed.set(null);
+    this.newStartRound.set(1);
     await this.load();
   }
 
@@ -253,7 +273,7 @@ export class TournamentPage {
   protected matchTitle(m: TournamentMatch): string {
     const t = this.data()?.tournament;
     if (!t) return '';
-    return roundTitle({ format: t['format'], size: t['size'] }, m) + (this.isRoundRobin() ? '' : ` · Luta ${m.slot}`);
+    return roundTitle({ format: t['format'], size: t['size'], firstRoundMatches: t['firstRoundMatches'] }, m) + (this.isRoundRobin() ? '' : ` · Luta ${m.slot}`);
   }
 
   protected async editMatch(m: TournamentMatch) {

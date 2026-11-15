@@ -48,6 +48,8 @@ export interface Field {
    * (ex.: episódio herda título e imagem do show). Só sobrescreve campos vazios
    * ou ainda com a sugestão anterior, nunca o que o usuário digitou.
    */
+  /** Texto do botão de importar (edição). */
+  autofillLabel?: string;
   autofill?: (id: string | null, find: (key: string, id: string) => Entity | undefined) => Record<string, unknown>;
 }
 
@@ -106,7 +108,22 @@ export const SHOW_KIND = opts({
 });
 export const TEAM_KIND = opts({ TAG_TEAM: 'Dupla / Tag team', FACTION: 'Facção' });
 export const EDIT_STATUS = opts({ COMPLETE: 'Completo', NEEDED: 'Precisa editar' });
-export const EPISODE_STATUS = opts({ PLANNED: 'Planejado', DONE: 'Realizado' });
+export const EPISODE_STATUS = opts({ UNPLANNED: 'Sem planejamento', PLANNED: 'Planejado', DONE: 'Realizado' });
+
+/** Cor da borda de um episódio por status: realizado verde, planejado amarelo, sem planejamento vermelho. */
+export const EPISODE_STATUS_COLOR: Record<string, string> = {
+  DONE: 'var(--p-green-500)',
+  PLANNED: 'var(--p-yellow-500)',
+  UNPLANNED: 'var(--p-red-500)',
+};
+export const EPISODE_STATUS_SEVERITY: Record<string, 'success' | 'warn' | 'danger'> = {
+  DONE: 'success',
+  PLANNED: 'warn',
+  UNPLANNED: 'danger',
+};
+
+/** Status ao tirar um episódio de "realizado": volta a planejado se tem card, senão sem planejamento. */
+export const reopenedStatus = (segments: number) => (segments > 0 ? 'PLANNED' : 'UNPLANNED');
 export const TOURNAMENT_FORMAT = opts({
   SINGLE_ELIMINATION: 'Eliminatória simples',
   ROUND_ROBIN: 'Pontos corridos (grupos)',
@@ -429,6 +446,7 @@ export const RESOURCES: Record<string, Resource> = {
     fields: [
       {
         key: 'showId', label: 'Show', type: 'ref', ref: 'shows', required: true,
+        autofillLabel: 'Importar título e imagem do show',
         autofill: (id, find) => {
           const show = id ? find('shows', id) : undefined;
           return { title: show?.['name'] ?? '', imageUrl: show?.['imageUrl'] ?? null };
@@ -441,7 +459,7 @@ export const RESOURCES: Record<string, Resource> = {
       { key: 'night', label: 'Noite (só PLE em duas noites)', type: 'select', options: [{ value: 1, label: 'Noite 1' }, { value: 2, label: 'Noite 2' }] },
       { ...dateField('airDate', 'Data (opcional)'), hint: 'Normalmente deixe vazio: o dia vem do dia da semana do show e da semana do mês (todo mês tem 4 semanas).' },
       // vazio = calculada pelo dia da semana do show + semana do mês
-      { key: 'status', label: 'Status', type: 'select', options: EPISODE_STATUS, default: 'PLANNED' },
+      { key: 'status', label: 'Status', type: 'select', options: EPISODE_STATUS, default: 'UNPLANNED' },
       image,
       { key: 'notes', label: 'Notas', type: 'textarea', full: true },
     ],
@@ -469,7 +487,9 @@ export const RESOURCES: Record<string, Resource> = {
     ],
     fields: [
       name(), { key: 'format', label: 'Formato', type: 'select', options: TOURNAMENT_FORMAT, default: 'SINGLE_ELIMINATION' },
-      { key: 'size', label: 'Vagas', type: 'number', required: true, min: 2, max: 64, default: 8 },
+      { key: 'size', label: 'Vagas (inscritos previstos)', type: 'number', required: true, min: 2, max: 64, default: 8 },
+      { key: 'firstRoundMatches', label: 'Lutas na 1ª rodada', type: 'number', min: 1, max: 32, showIf: (v) => v['format'] !== 'ROUND_ROBIN', hint: 'Potência de 2 (1, 2, 4, 8...). Ex.: 2 = duas semifinais e a final. Vazio = deduzido das vagas.' },
+      { key: 'firstRoundPerMatch', label: 'Competidores por luta (1ª rodada)', type: 'number', min: 2, max: 8, showIf: (v) => v['format'] !== 'ROUND_ROBIN', hint: '3 = triple threat, 4 = fatal 4-way. As rodadas seguintes são 1 contra 1 (o vencedor de cada luta avança).' },
       { key: 'seasonId', label: 'Temporada', type: 'ref', ref: 'seasons' },
       { key: 'status', label: 'Status', type: 'select', options: TOURNAMENT_STATUS, default: 'PLANNED' },
       { key: 'isTag', label: 'Torneio de duplas', type: 'boolean', default: false },
