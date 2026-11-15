@@ -10,16 +10,29 @@
     }
     <form [formGroup]="form" (ngSubmit)="generate()" class="flex flex-col gap-4">
         @if (!single) {
+            <div>
+                <label class="block font-medium mb-2">Temporada *</label>
+                <p-select formControlName="seasonId" [options]="seasons()" optionLabel="label" optionValue="value" placeholder="Selecione" appendTo="body" fluid />
+            </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block font-medium mb-2" for="ai-from">De (mês) *</label>
-                    <input id="ai-from" type="month" formControlName="from" class="p-inputtext w-full" />
+                    <label class="block font-medium mb-2">De *</label>
+                    <div class="flex gap-2">
+                        <p-select formControlName="fromMonth" [options]="monthOptions" optionLabel="label" optionValue="value" appendTo="body" class="flex-1 min-w-0" aria-label="Mês de início" />
+                        <p-select formControlName="fromWeek" [options]="weekOptions" optionLabel="label" optionValue="value" appendTo="body" class="w-32" aria-label="Semana de início" />
+                    </div>
                 </div>
                 <div>
-                    <label class="block font-medium mb-2" for="ai-to">Até (mês) *</label>
-                    <input id="ai-to" type="month" formControlName="to" class="p-inputtext w-full" />
+                    <label class="block font-medium mb-2">Até *</label>
+                    <div class="flex gap-2">
+                        <p-select formControlName="toMonth" [options]="monthOptions" optionLabel="label" optionValue="value" appendTo="body" class="flex-1 min-w-0" aria-label="Mês final" />
+                        <p-select formControlName="toWeek" [options]="weekOptions" optionLabel="label" optionValue="value" appendTo="body" class="w-32" aria-label="Semana final" />
+                    </div>
                 </div>
             </div>
+            @if (rangeInverted()) {
+                <div class="text-red-500 text-sm -mt-2"><i class="pi pi-exclamation-circle mr-1"></i>O fim vem antes do início (a temporada vai de maio a abril).</div>
+            }
             <div>
                 <label class="block font-medium mb-2">Shows (vazio = todos)</label>
                 <p-multiselect formControlName="showIds" [options]="shows()" optionLabel="label" optionValue="value" display="chip" placeholder="Todos" appendTo="body" fluid />
@@ -44,7 +57,7 @@
         }
         <div class="flex justify-end gap-2 mt-2">
             <p-button type="button" label="Cancelar" severity="secondary" text (onClick)="ref.close()" />
-            <p-button type="submit" label="Gerar" icon="pi pi-sparkles" [loading]="busy()" [disabled]="form.invalid" />
+            <p-button type="submit" label="Gerar" icon="pi pi-sparkles" [loading]="busy()" [disabled]="form.invalid || rangeInverted()" />
         </div>
     </form>
 }

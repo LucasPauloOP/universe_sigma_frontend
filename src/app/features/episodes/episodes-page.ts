@@ -254,7 +254,7 @@ export class EpisodesPage {
     }
 
     protected async planWithAi() {
-        const saved = await openDialog<number>(this.dialogs, SuggestSegmentsDialog, 'Planejar período com IA', {}, '52rem');
+        const saved = await openDialog<number>(this.dialogs, SuggestSegmentsDialog, 'Planejar período com IA', { seasonId: this.seasonId() }, '52rem');
         if (!saved) return;
         this.toast.add({ severity: 'success', summary: `${saved} episódio(s) planejado(s)`, life: 4000 });
         await this.load();

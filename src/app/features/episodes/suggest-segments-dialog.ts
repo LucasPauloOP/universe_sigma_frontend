@@ -1,4 +1,5 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MessageService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
@@ -7,24 +8,28 @@ import { DynamicDialogConfig, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { ProgressBarModule } from 'primeng/progressbar';
+import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
 import { TextareaModule } from 'primeng/textarea';
 import { Api } from '../../core/api';
 import { RangeJob, SuggestedEpisode, SuggestedSegment, sidesOf, toBulkItems, withoutSegment } from '../../core/ai-plan';
-import { fmtDate } from '../../core/format';
+import { MONTHS, SEASON_MONTHS, fmtDate, seasonMonthIndex } from '../../core/format';
 import { Refs } from '../../core/refs';
+import { RESOURCES } from '../../core/resources';
 
 export interface SuggestSegmentsData {
     /** com episodeId gera só aquele episódio; sem ele, planeja um período */
     episodeId?: string;
     episodeLabel?: string;
+    /** temporada já escolhida na tela de episódios (planejamento por período) */
+    seasonId?: string | null;
 }
 
 type Step = 'form' | 'running' | 'preview';
 
 @Component({
     selector: 'app-suggest-segments-dialog',
-    imports: [FormsModule, ReactiveFormsModule, ButtonModule, CheckboxModule, InputNumberModule, MultiSelectModule, ProgressBarModule, TagModule, TextareaModule],
+    imports: [FormsModule, ReactiveFormsModule, ButtonModule, CheckboxModule, InputNumberModule, MultiSelectModule, ProgressBarModule, SelectModule, TagModule, TextareaModule],
     templateUrl: './suggest-segments-dialog.html'
 })
 export class SuggestSegmentsDialog implements OnDestroy {
@@ -45,6 +50,10 @@ export class SuggestSegmentsDialog implements OnDestroy {
     protected readonly fmtDate = fmtDate;
     protected readonly sidesOf = sidesOf;
 
+    /** Calendário do jogo: meses da temporada (maio → abril) e 4 semanas por mês. */
+    protected readonly monthOptions = SEASON_MONTHS.map((m) => ({ value: m, label: MONTHS[m - 1] }));
+    protected readonly weekOptions = [1, 2, 3, 4].map((w) => ({ value: w, label: `Semana ${w}` }));
+    protected readonly seasons = computed(() => (this.refs.version(), this.refs.list('seasons').map((e) => ({ value: e.id, label: RESOURCES['seasons'].label(e) }))));
     protected readonly shows = computed(() => (this.refs.version(), this.refs.list('shows').map((e) => ({ value: e.id, label: e['name'] as string }))));
     protected readonly progress = computed(() => {
         const j = this.job();
@@ -53,8 +62,11 @@ export class SuggestSegmentsDialog implements OnDestroy {
     protected readonly saveCount = computed(() => this.episodes().filter((e) => this.selected().has(e.episodeId) && e.segments.length).length);
 
     protected readonly form = inject(FormBuilder).group({
-        from: ['' as string, this.single ? [] : Validators.required],
-        to: ['' as string, this.single ? [] : Validators.required],
+        seasonId: [(this.data.seasonId ?? null) as string | null, this.single ? [] : Validators.required],
+        fromMonth: [5 as number, Validators.required],
+        fromWeek: [1 as number, Validators.required],
+        toMonth: [5 as number, Validators.required],
+        toWeek: [4 as number, Validators.required],
         showIds: [[] as string[]],
         count: [5 as number, [Validators.required, Validators.min(1), Validators.max(10)]],
         includeMainEvent: [true],
@@ -62,11 +74,19 @@ export class SuggestSegmentsDialog implements OnDestroy {
         guidance: ['' as string, Validators.maxLength(500)]
     });
 
+    /** O fim vem antes do início no calendário da temporada? */
+    private readonly formValue = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
+    protected readonly rangeInverted = computed(() => {
+        const v = this.formValue();
+        const pos = (m?: number | null, w?: number | null) => seasonMonthIndex(m ?? 5) * 4 + (w ?? 1);
+        return !this.single && pos(v.toMonth, v.toWeek) < pos(v.fromMonth, v.fromWeek);
+    });
+
     private timer: ReturnType<typeof setTimeout> | null = null;
     private jobId: string | null = null;
 
     constructor() {
-        void this.refs.loadMany(['shows', 'match-types', 'titles', 'card-divisions']);
+        void this.refs.loadMany(['seasons', 'shows', 'match-types', 'titles', 'card-divisions']);
     }
 
     ngOnDestroy() {
@@ -79,7 +99,7 @@ export class SuggestSegmentsDialog implements OnDestroy {
     }
 
     protected async generate() {
-        if (this.form.invalid) return;
+        if (this.form.invalid || this.rangeInverted()) return;
         this.error.set(null);
         this.busy.set(true);
         try {
@@ -88,10 +108,11 @@ export class SuggestSegmentsDialog implements OnDestroy {
                 const res = await this.api.post<SuggestedEpisode>(`episodes/${this.data.episodeId}/segments/suggest`, this.options());
                 this.showPreview([res]);
             } else {
-                const { from, to, showIds, skipPlanned } = this.form.getRawValue();
+                const { seasonId, fromMonth, fromWeek, toMonth, toWeek, showIds, skipPlanned } = this.form.getRawValue();
                 const res = await this.api.post<{ jobId: string; total: number }>('episodes/suggest-range', {
-                    from,
-                    to,
+                    seasonId,
+                    from: { month: fromMonth, week: fromWeek },
+                    to: { month: toMonth, week: toWeek },
                     skipPlanned,
                     ...(showIds?.length ? { showIds } : {}),
                     ...this.options()
