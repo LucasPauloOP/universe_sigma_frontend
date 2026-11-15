@@ -16,13 +16,14 @@ import { EPISODE_STATUS, FINISH_TYPE, labelOfOption, reopenedStatus } from '../.
 import { resultProblem } from '../../core/segment-result';
 import { confirmAction, openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
+import { ActiveRivalries } from './active-rivalries';
 import { DivisionRanking } from './division-ranking';
 import { SegmentDialog } from './segment-dialog';
 import { SuggestSegmentsData, SuggestSegmentsDialog } from './suggest-segments-dialog';
 
 @Component({
     selector: 'app-episode-card',
-    imports: [DivisionRanking, DragDropModule, FormsModule, RouterLink, ButtonModule, CheckboxModule, ProgressBarModule, TagModule, TooltipModule, PageHeader],
+    imports: [ActiveRivalries, DivisionRanking, DragDropModule, FormsModule, RouterLink, ButtonModule, CheckboxModule, ProgressBarModule, TagModule, TooltipModule, PageHeader],
     templateUrl: './episode-card.html',
     styles: `
         .cdk-drag-placeholder {
@@ -44,9 +45,13 @@ export class EpisodeCardPage {
     protected readonly episode = signal<EpisodeCard | null>(null);
     protected readonly loading = signal(true);
     protected readonly rankingOpen = signal(false);
+    protected readonly rivalriesOpen = signal(false);
 
     /** Lutadores já escalados em qualquer segmento do card (destacados no ranking). */
     protected readonly scheduled = computed(() => new Set((this.episode()?.segments ?? []).flatMap((s) => s.participants.map((p) => p.wrestlerId))));
+
+    /** Rivalidades ligadas às lutas deste card. */
+    protected readonly cardRivalryIds = computed(() => new Set((this.episode()?.segments ?? []).map((s) => s.rivalryId).filter((x): x is string => !!x)));
 
     constructor() {
         effect(() => {
