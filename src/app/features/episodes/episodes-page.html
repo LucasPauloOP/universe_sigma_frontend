@@ -52,7 +52,7 @@
                                             [class.ring-2]="e.id === nextId()"
                                             [class.ring-primary]="e.id === nextId()"
                                             [class.opacity-60]="e['status'] === 'DONE'"
-                                            [style.border-left]="'3px solid ' + accent(e)"
+                                            [style.border-left]="'3px solid ' + statusColor(e)"
                                             [title]="chip(e) + ' · ' + whenLabel(e)"
                                             (click)="open(e)"
                                         >
@@ -106,7 +106,7 @@
                         [class.opacity-70]="e['status'] === 'DONE' || before(e)"
                         [class.ring-2]="e.id === nextId()"
                         [class.ring-primary]="e.id === nextId()"
-                        [style.border-left]="'4px solid ' + accent(e)"
+                        [style.border]="'2px solid ' + statusColor(e)"
                         (click)="open(e)"
                         (keydown.enter)="open(e)"
                         tabindex="0"
@@ -128,7 +128,7 @@
                             @if (e.id === nextId()) {
                                 <p-tag value="Próximo" icon="pi pi-play" />
                             }
-                            <p-tag [value]="e['status'] === 'DONE' ? 'Realizado' : 'Planejado'" [severity]="e['status'] === 'DONE' ? 'success' : 'secondary'" />
+                            <p-tag [value]="statusLabel(e)" [severity]="statusSeverity(e)" />
                             <span class="text-sm text-muted-color ml-auto"><i class="pi pi-list mr-1"></i>{{ e['_count']?.segments ?? 0 }}</span>
                         </div>
                     </div>

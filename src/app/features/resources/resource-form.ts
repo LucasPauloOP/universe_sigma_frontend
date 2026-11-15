@@ -16,7 +16,7 @@ import { Activation, ACTIVATABLE } from '../../core/activation';
 import { Api } from '../../core/api';
 import { Entity } from '../../core/models';
 import { Refs } from '../../core/refs';
-import { RESOURCES, Resource, buildBody } from '../../core/resources';
+import { Field, RESOURCES, Resource, buildBody } from '../../core/resources';
 import { ImageField } from '../../shared/image-field';
 
 export interface ResourceFormData {
@@ -71,6 +71,9 @@ export interface ResourceFormData {
                                         <p-multiselect [inputId]="'f-' + f.key" [formControlName]="f.key" [options]="options(f.ref!)" optionLabel="label" optionValue="value" [filter]="true" filterBy="label" display="chip" placeholder="Selecione" appendTo="body" [maxSelectedLabels]="50" fluid />
                                     }
                                 }
+                                @if (canImport(f)) {
+                                    <p-button type="button" [label]="f.autofillLabel ?? 'Importar dados'" icon="pi pi-download" severity="secondary" size="small" class="block mt-2" (onClick)="importFrom(f)" />
+                                }
                                 @if (f.hint) {
                                     <small class="block mt-1 text-muted-color">{{ f.hint }}</small>
                                 }
@@ -105,22 +108,44 @@ export class ResourceForm {
         if (!this.data.entity) this.setupAutofill();
     }
 
+    private readonly lastAutofill = new Map<string, Record<string, unknown>>();
+
+    private computeAutofill(f: Field, id: string | null) {
+        return f.autofill!(id, (k, i) => this.refs.list(k).find((e) => e.id === i));
+    }
+
     /** Criação: escolher um ref preenche outros campos (sem pisar no que o usuário editou). */
     private setupAutofill() {
         for (const f of this.data.res.fields) {
-            const autofill = f.autofill;
-            if (!autofill) continue;
-            let last: Record<string, unknown> = {};
+            if (!f.autofill) continue;
             this.form.controls[f.key].valueChanges.subscribe((id) => {
-                const next = autofill(id, (k, i) => this.refs.list(k).find((e) => e.id === i));
+                const last = this.lastAutofill.get(f.key) ?? {};
+                const next = this.computeAutofill(f, id);
                 for (const [key, value] of Object.entries(next)) {
                     const c = this.form.controls[key];
                     if (!c) continue;
                     const empty = c.value === null || c.value === '' || c.value === undefined;
                     if (empty || c.value === last[key]) c.setValue(value, { emitEvent: false });
                 }
-                last = next;
+                this.lastAutofill.set(f.key, next);
             });
+        }
+    }
+
+    /** Edição: oferece importar os dados quando o ref foi trocado. */
+    protected canImport(f: Field): boolean {
+        const entity = this.data.entity;
+        const v = (this.values() as Record<string, unknown>)[f.key];
+        return !!entity && !!f.autofill && !!v && v !== entity[f.key];
+    }
+
+    protected importFrom(f: Field) {
+        const next = this.computeAutofill(f, this.form.controls[f.key].value);
+        for (const [key, value] of Object.entries(next)) {
+            const c = this.form.controls[key];
+            if (!c) continue;
+            c.setValue(value);
+            c.markAsDirty();
         }
     }
 

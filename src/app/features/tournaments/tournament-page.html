@@ -29,6 +29,9 @@
                         <small class="text-muted-color">#{{ e.seed }}</small>
                     }
                     {{ name(e) }}
+                    @if (startsAt(e); as at) {
+                        <small class="text-muted-color">· entra: {{ at }}</small>
+                    }
                     <p-button icon="pi pi-times" severity="secondary" text rounded size="small" (onClick)="removeEntrant(e)" aria-label="Remover" />
                 </span>
             } @empty {
@@ -44,9 +47,15 @@
                 <label class="block font-medium mb-2">Seed</label>
                 <p-inputnumber [min]="1" [useGrouping]="false" [ngModel]="newSeed()" (ngModelChange)="newSeed.set($event)" fluid />
             </div>
+            @if (startRoundOptions().length > 1 && !isRoundRobin()) {
+                <div class="w-56">
+                    <label class="block font-medium mb-2">Começa em</label>
+                    <p-select [options]="startRoundOptions()" optionLabel="label" optionValue="value" appendTo="body" [ngModel]="newStartRound()" (ngModelChange)="newStartRound.set($event)" fluid />
+                </div>
+            }
             <p-button label="Inscrever" icon="pi pi-plus" severity="secondary" [disabled]="!newEntrant()" (onClick)="addEntrant()" />
         </div>
-        <p class="text-sm text-muted-color mb-0 mt-3">Depois de inscrever todos, use “Gerar chave” para organizar as lutas pelos seeds. Quem passar das vagas da 1ª rodada entra numa luta pelo diálogo dela (triple threat, fatal 4-way...), onde também dá para trocar o tipo de luta de cada uma.</p>
+        <p class="text-sm text-muted-color mb-0 mt-3">Depois de inscrever todos, use “Gerar chave” para organizar as lutas pelos seeds. Com “Competidores por luta” no torneio, a 1ª rodada já sai com triple threat, fatal 4-way etc. Quem “Começa em” rodada posterior entra direto nela, sem passar pelas anteriores.</p>
     </div>
 
     <div class="card">

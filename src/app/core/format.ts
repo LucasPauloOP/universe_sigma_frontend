@@ -76,11 +76,29 @@ export function gameDayOffset(e: EpisodeLike): number {
 
 export const gameDayName = (e: EpisodeLike) => GAME_WEEKDAYS[gameDayOffset(e)];
 
-/** "Final", "Semifinal", "Quartas de final"... (eliminatória) ou o nome do grupo. Igual ao backend. */
-export function roundTitle(t: { format: string; size: number }, m: { round: number; groupName?: string | null }): string {
+type RoundInfo = { format?: string; size: number; firstRoundMatches?: number | null };
+
+/** Nº de rodadas da eliminatória (igual ao backend). */
+export function totalRounds(t: RoundInfo): number {
+  if (t.firstRoundMatches) return Math.round(Math.log2(t.firstRoundMatches)) + 1;
+  if (t.size > 1 && (t.size & (t.size - 1)) === 0) return Math.round(Math.log2(t.size));
+  for (let per = 3; per <= 8; per++) {
+    const m = t.size / per;
+    if (Number.isInteger(m) && (m & (m - 1)) === 0) return Math.round(Math.log2(m)) + 1;
+  }
+  return Math.max(1, Math.round(Math.log2(t.size)));
+}
+
+/** "Final", "Semifinal", "Quartas de final"... para a rodada `round` de `total`. */
+export function roundName(round: number, total: number): string {
+  const left = total - round;
+  return left === 0 ? 'Final' : left === 1 ? 'Semifinal' : left === 2 ? 'Quartas de final' : `Rodada ${round}`;
+}
+
+/** Título da rodada (eliminatória) ou o nome do grupo. Igual ao backend. */
+export function roundTitle(t: RoundInfo, m: { round: number; groupName?: string | null }): string {
   if (t.format === 'ROUND_ROBIN') return m.groupName ?? 'Fase de grupos';
-  const left = Math.round(Math.log2(t.size)) - m.round;
-  return left === 0 ? 'Final' : left === 1 ? 'Semifinal' : left === 2 ? 'Quartas de final' : `Rodada ${m.round}`;
+  return roundName(m.round, totalRounds(t));
 }
 
 /** Rótulo de um episódio: "RAW · Agosto · semana 1 · Noite 2". */
