@@ -152,6 +152,9 @@ export interface Champion {
   teamId: string | null;
   name: string;
   imageUrl: string | null;
+  /** só para dupla/facção campeã */
+  kind?: string | null;
+  members?: string[];
 }
 
 export interface CardDivision extends Entity {
