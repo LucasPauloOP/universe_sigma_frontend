@@ -21,6 +21,7 @@ export interface Universe {
 
 export interface AuthResponse {
   token: string;
+  refreshToken?: string;
   user: User;
   universe?: Universe;
 }
