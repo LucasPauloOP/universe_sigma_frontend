@@ -41,6 +41,13 @@
                 </div>
             }
 
+            <div class="col-span-12">
+                <p-button type="button" [label]="rankingOpen() ? 'Ocultar ranking das divisões' : 'Ver ranking das divisões'" icon="pi pi-list-check" severity="secondary" size="small" [outlined]="true" (onClick)="rankingOpen.set(!rankingOpen())" />
+                @if (rankingOpen()) {
+                    <div class="mt-3"><app-division-ranking [initialBrandId]="data.brandId" [scheduled]="scheduled()" /></div>
+                }
+            </div>
+
             <div class="col-span-12 flex flex-wrap gap-x-8 gap-y-3">
                 @if (isMatch() && hasTitle()) {
                     <div class="flex flex-col gap-1">

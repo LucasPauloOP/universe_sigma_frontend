@@ -6,8 +6,13 @@
 @if (episode(); as e) {
     <app-page-header [title]="heading(e)" [subtitle]="subtitle(e)">
         <p-button [label]="statusLabel(e)" [icon]="e.status === 'DONE' ? 'pi pi-check-circle' : 'pi pi-clock'" severity="secondary" (onClick)="toggleStatus(e)" />
+        <p-button [label]="rankingOpen() ? 'Ocultar ranking' : 'Ranking'" icon="pi pi-list-check" severity="secondary" [outlined]="true" (onClick)="rankingOpen.set(!rankingOpen())" pTooltip="Ranking das divisões para planejar o card" />
         <p-button label="Segmento" icon="pi pi-plus" (onClick)="add()" />
     </app-page-header>
+
+    @if (rankingOpen()) {
+        <div class="mb-4"><app-division-ranking [initialBrandId]="e.show['brandId']" [scheduled]="scheduled()" /></div>
+    }
 
     @if (e.segments.length) {
         <div class="flex flex-col gap-2" cdkDropList (cdkDropListDropped)="drop($event)">
