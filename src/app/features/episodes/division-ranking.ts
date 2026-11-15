@@ -29,7 +29,7 @@ import { CardDivision, DivisionEntry } from '../../core/models';
                             }
                             <ol class="list-none m-0 p-0 flex flex-col gap-0.5 max-h-60 overflow-y-auto">
                                 @for (e of d.entries; track e.id; let i = $index) {
-                                    <li class="flex items-center gap-2 rounded px-2 py-1 text-sm" [class]="e.wrestlerId && scheduled().has(e.wrestlerId) ? 'bg-primary text-primary-contrast' : 'bg-surface-100 dark:bg-surface-800'">
+                                    <li class="flex items-center gap-2 rounded px-2 py-1 text-sm" [class]="isScheduled(e) ? 'bg-primary text-primary-contrast' : 'bg-surface-100 dark:bg-surface-800'">
                                         <span class="w-5 text-right opacity-70">{{ i + 1 }}</span>
                                         <span class="flex-1 truncate" [class.font-semibold]="i === 0">{{ name(e) }}</span>
                                         @if (isChampion(d, e)) {
@@ -84,6 +84,15 @@ export class DivisionRanking {
         } catch {
             this.board.set([]);
         }
+    }
+
+    /** Lutador escalado; dupla escalada quando todos os integrantes estão (facção: basta um). */
+    protected isScheduled(e: DivisionEntry): boolean {
+        const set = this.scheduled();
+        if (e.wrestlerId) return set.has(e.wrestlerId);
+        const members = ((e.team?.['members'] as { wrestlerId: string }[] | undefined) ?? []).map((m) => m.wrestlerId);
+        if (!members.length) return false;
+        return e.team?.['kind'] === 'FACTION' ? members.some((id) => set.has(id)) : members.every((id) => set.has(id));
     }
 
     protected champions(d: CardDivision) {
