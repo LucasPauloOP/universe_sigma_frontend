@@ -1,5 +1,5 @@
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { Component, effect, inject, input, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
@@ -16,11 +16,12 @@ import { EPISODE_STATUS, FINISH_TYPE, labelOfOption, reopenedStatus } from '../.
 import { resultProblem } from '../../core/segment-result';
 import { confirmAction, openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
+import { DivisionRanking } from './division-ranking';
 import { SegmentDialog } from './segment-dialog';
 
 @Component({
     selector: 'app-episode-card',
-    imports: [DragDropModule, FormsModule, RouterLink, ButtonModule, CheckboxModule, ProgressBarModule, TagModule, TooltipModule, PageHeader],
+    imports: [DivisionRanking, DragDropModule, FormsModule, RouterLink, ButtonModule, CheckboxModule, ProgressBarModule, TagModule, TooltipModule, PageHeader],
     templateUrl: './episode-card.html',
     styles: `
         .cdk-drag-placeholder {
@@ -41,6 +42,10 @@ export class EpisodeCardPage {
 
     protected readonly episode = signal<EpisodeCard | null>(null);
     protected readonly loading = signal(true);
+    protected readonly rankingOpen = signal(false);
+
+    /** Lutadores já escalados em qualquer segmento do card (destacados no ranking). */
+    protected readonly scheduled = computed(() => new Set((this.episode()?.segments ?? []).flatMap((s) => s.participants.map((p) => p.wrestlerId))));
 
     constructor() {
         effect(() => {
@@ -155,7 +160,7 @@ export class EpisodeCardPage {
     }
 
     private async openDialog(segment?: Segment, markDone = false) {
-        const saved = await openDialog(this.dialogs, SegmentDialog, segment ? 'Editar segmento' : 'Novo segmento', { episodeId: this.id(), segment, markDone }, '52rem');
+        const saved = await openDialog(this.dialogs, SegmentDialog, segment ? 'Editar segmento' : 'Novo segmento', { episodeId: this.id(), segment, markDone, brandId: this.episode()?.show['brandId'] as string | null | undefined }, '52rem');
         if (saved) await this.load();
     }
 
