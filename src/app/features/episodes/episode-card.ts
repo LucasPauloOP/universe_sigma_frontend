@@ -16,12 +16,14 @@ import { EPISODE_STATUS, FINISH_TYPE, labelOfOption, reopenedStatus } from '../.
 import { resultProblem } from '../../core/segment-result';
 import { confirmAction, openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
+import { ActiveRivalries } from './active-rivalries';
 import { DivisionRanking } from './division-ranking';
 import { SegmentDialog } from './segment-dialog';
+import { SuggestSegmentsData, SuggestSegmentsDialog } from './suggest-segments-dialog';
 
 @Component({
     selector: 'app-episode-card',
-    imports: [DivisionRanking, DragDropModule, FormsModule, RouterLink, ButtonModule, CheckboxModule, ProgressBarModule, TagModule, TooltipModule, PageHeader],
+    imports: [ActiveRivalries, DivisionRanking, DragDropModule, FormsModule, RouterLink, ButtonModule, CheckboxModule, ProgressBarModule, TagModule, TooltipModule, PageHeader],
     templateUrl: './episode-card.html',
     styles: `
         .cdk-drag-placeholder {
@@ -43,15 +45,27 @@ export class EpisodeCardPage {
     protected readonly episode = signal<EpisodeCard | null>(null);
     protected readonly loading = signal(true);
     protected readonly rankingOpen = signal(false);
+    protected readonly rivalriesOpen = signal(false);
 
     /** Lutadores já escalados em qualquer segmento do card (destacados no ranking). */
     protected readonly scheduled = computed(() => new Set((this.episode()?.segments ?? []).flatMap((s) => s.participants.map((p) => p.wrestlerId))));
+
+    /** Rivalidades ligadas às lutas deste card. */
+    protected readonly cardRivalryIds = computed(() => new Set((this.episode()?.segments ?? []).map((s) => s.rivalryId).filter((x): x is string => !!x)));
 
     constructor() {
         effect(() => {
             this.id();
             untracked(() => void this.load());
         });
+    }
+
+    /** Marcas da rivalidade na luta: começa / encerra (com ganhador) / reconhecida. */
+    protected rivalryLabel(s: Segment): string {
+        if (!s.rivalry) return '';
+        if (s.startsRivalry) return `Começa rivalidade: ${s.rivalry.name}`;
+        if (s.endsRivalry) return `Encerra rivalidade: ${s.rivalry.name}`;
+        return `Rivalidade: ${s.rivalry.name}`;
     }
 
     protected async load() {
@@ -149,6 +163,11 @@ export class EpisodeCardPage {
         } finally {
             await this.load();
         }
+    }
+
+    protected async suggest(e: EpisodeCard) {
+        const saved = await openDialog<number>(this.dialogs, SuggestSegmentsDialog, 'Gerar segmentos com IA', { episodeId: e.id, episodeLabel: this.heading(e) } satisfies SuggestSegmentsData, '48rem');
+        if (saved) await this.load();
     }
 
     protected async add() {

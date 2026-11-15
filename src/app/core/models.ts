@@ -21,6 +21,7 @@ export interface Universe {
 
 export interface AuthResponse {
   token: string;
+  refreshToken?: string;
   user: User;
   universe?: Universe;
 }
@@ -60,6 +61,11 @@ export interface Segment extends Entity {
   cardDivisionId: string | null;
   cardDivision?: Entity | null;
   rankingApplied?: boolean;
+  startsRivalry?: boolean;
+  endsRivalry?: boolean;
+  rivalryApplied?: boolean;
+  rivalryId?: string | null;
+  rivalry?: { id: string; name: string; isActive: boolean; winnerSide: number | null } | null;
   tournamentMatch?: (Entity & { round: number; slot: number; groupName: string | null; tournament: Entity }) | null;
   matchType?: Entity | null;
   title?: Entity | null;
@@ -151,6 +157,9 @@ export interface Champion {
   teamId: string | null;
   name: string;
   imageUrl: string | null;
+  /** só para dupla/facção campeã */
+  kind?: string | null;
+  members?: string[];
 }
 
 export interface CardDivision extends Entity {

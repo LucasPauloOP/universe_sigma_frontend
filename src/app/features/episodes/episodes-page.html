@@ -2,6 +2,7 @@
     <p-selectbutton [options]="viewOptions" optionLabel="label" optionValue="value" [allowEmpty]="false" [ngModel]="view()" (ngModelChange)="view.set($event)" aria-label="Visualização" />
     <p-select [options]="seasonOptions()" optionLabel="label" optionValue="value" placeholder="Temporada" appendTo="body" [ngModel]="seasonId()" (ngModelChange)="seasonId.set($event); showId.set(null)" />
     <p-button label="Gerar episódios" icon="pi pi-bolt" severity="secondary" (onClick)="generate()" />
+    <p-button label="Planejar com IA" icon="pi pi-sparkles" severity="secondary" (onClick)="planWithAi()" />
     <p-button label="Novo" icon="pi pi-plus" (onClick)="add()" />
 </app-page-header>
 

@@ -19,6 +19,7 @@ import { UniverseStore } from '../../core/universe-store';
 import { confirmAction, openDialog } from '../../shared/dialogs';
 import { PageHeader } from '../../shared/page-header';
 import { GenerateEpisodes } from '../resources/generate-episodes';
+import { SuggestSegmentsDialog } from './suggest-segments-dialog';
 import { ResourceForm } from '../resources/resource-form';
 
 interface MonthGroup {
@@ -249,6 +250,13 @@ export class EpisodesPage {
         });
         if (!ok) return;
         await this.api.delete(`episodes/${e.id}`).catch(() => null);
+        await this.load();
+    }
+
+    protected async planWithAi() {
+        const saved = await openDialog<number>(this.dialogs, SuggestSegmentsDialog, 'Planejar período com IA', { seasonId: this.seasonId() }, '52rem');
+        if (!saved) return;
+        this.toast.add({ severity: 'success', summary: `${saved} episódio(s) planejado(s)`, life: 4000 });
         await this.load();
     }
 

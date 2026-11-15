@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -9,7 +9,7 @@ import { TextareaModule } from 'primeng/textarea';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { startWith } from 'rxjs';
 import { Api } from '../../core/api';
-import { Participant, Segment } from '../../core/models';
+import { Entity, Participant, Segment } from '../../core/models';
 import { resultProblem } from '../../core/segment-result';
 import { roundTitle } from '../../core/format';
 import { DivisionRanking } from './division-ranking';
@@ -77,7 +77,10 @@ export class SegmentDialog {
         notes: new FormControl(this.s?.notes ?? ''),
         stakes: new FormControl<string>(this.s?.stakes ?? 'NONE'),
         cardDivisionId: new FormControl<string | null>(this.s?.cardDivisionId ?? null),
-        tournamentMatchId: new FormControl<string | null>(this.s?.tournamentMatch?.id ?? null)
+        tournamentMatchId: new FormControl<string | null>(this.s?.tournamentMatch?.id ?? null),
+        startsRivalry: new FormControl(this.s?.startsRivalry ?? false),
+        endsRivalry: new FormControl(this.s?.endsRivalry ?? false),
+        rivalryId: new FormControl<string | null>(this.s?.endsRivalry ? (this.s?.rivalryId ?? null) : null)
     });
     protected readonly values = toSignal(this.form.valueChanges.pipe(startWith(this.form.value)), { initialValue: this.form.value });
     protected readonly isMatch = computed(() => this.values().type === 'MATCH');
@@ -102,7 +105,53 @@ export class SegmentDialog {
     });
     protected readonly needsResult = computed(() => this.isMatch() && !!this.values().isDone);
 
+    // rivalidades reconhecidas pela luta montada (para encerrar) — busca ao mudar os participantes
+    protected readonly recognized = signal<Entity[]>([]);
+    protected readonly rivalryOptions = computed(() => {
+        const list = this.recognized()
+            // a rivalidade que ESTA luta começou não pode ser encerrada por ela mesma
+            .filter((r) => !(this.s?.startsRivalry && r.id === this.s.rivalryId))
+            .map((r) => ({ value: r.id, label: r['name'] as string }));
+        const cur = this.s?.endsRivalry ? this.s.rivalry : null;
+        if (cur && !list.some((o) => o.value === cur.id)) list.unshift({ value: cur.id, label: cur.name });
+        return list;
+    });
+    protected readonly startsRivalry = computed(() => !!this.values().startsRivalry);
+    protected readonly endsRivalry = computed(() => !!this.values().endsRivalry);
+    protected readonly rivalryMissing = computed(() => this.isMatch() && this.endsRivalry() && !this.values().rivalryId);
+
     constructor() {
+        let seq = 0;
+        effect((onCleanup) => {
+            const ids = [...new Set(this.participants().map((p) => p.wrestlerId))];
+            if (!this.isMatch() || ids.length < 2) {
+                this.recognized.set([]);
+                return;
+            }
+            const mine = ++seq;
+            const timer = setTimeout(() => {
+                this.api
+                    .get<Entity[]>(`rivalries/match?wrestlerIds=${ids.join(',')}`)
+                    .then((r) => mine === seq && this.recognized.set(r))
+                    .catch(() => undefined);
+            }, 300);
+            onCleanup(() => clearTimeout(timer));
+        });
+        // começar e encerrar não andam juntos
+        this.form.controls.startsRivalry.valueChanges.subscribe((on) => {
+            if (!on) return;
+            this.form.controls.endsRivalry.setValue(false);
+            this.form.controls.rivalryId.setValue(null);
+        });
+        this.form.controls.endsRivalry.valueChanges.subscribe((on) => {
+            if (on) {
+                this.form.controls.startsRivalry.setValue(false);
+                const opts = this.rivalryOptions();
+                if (!this.form.value.rivalryId && opts.length === 1) this.form.controls.rivalryId.setValue(opts[0].value);
+            } else {
+                this.form.controls.rivalryId.setValue(null);
+            }
+        });
         // empate não tem vencedor: limpa as estrelas ao marcar
         this.form.controls.isDraw.valueChanges.subscribe((draw) => {
             if (draw) this.participants.update((l) => l.map((p) => ({ ...p, isWinner: false })));
@@ -219,7 +268,7 @@ export class SegmentDialog {
     }
 
     protected async save() {
-        if (this.form.invalid || this.problem()) return;
+        if (this.form.invalid || this.problem() || this.rivalryMissing()) return;
         this.busy.set(true);
         const v = this.form.getRawValue();
         const isMatch = v.type === 'MATCH';
@@ -234,6 +283,9 @@ export class SegmentDialog {
             stakes: isMatch && v.cardDivisionId ? v.stakes : 'NONE',
             cardDivisionId: isMatch && v.stakes !== 'NONE' ? v.cardDivisionId : null,
             tournamentMatchId: isMatch ? v.tournamentMatchId : null,
+            startsRivalry: isMatch && !!v.startsRivalry,
+            endsRivalry: isMatch && !!v.endsRivalry && !v.startsRivalry,
+            rivalryId: isMatch && v.endsRivalry && !v.startsRivalry ? v.rivalryId : null,
             isDone: !!v.isDone,
             isDraw: isMatch && !!v.isDraw,
             notes: v.notes?.trim() || null,

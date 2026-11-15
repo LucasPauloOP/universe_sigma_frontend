@@ -7,6 +7,7 @@ import { AuthResponse, Universe, User } from './models';
 import { UniverseStore } from './universe-store';
 
 const TOKEN = 'universe-sigma:token';
+const REFRESH = 'universe-sigma:refresh';
 
 @Injectable({ providedIn: 'root' })
 export class Auth {
@@ -14,7 +15,9 @@ export class Auth {
   private readonly router = inject(Router);
   private readonly store = inject(UniverseStore);
 
-  readonly token = signal<string | null>(readToken());
+  readonly token = signal<string | null>(read(TOKEN));
+  private refreshToken: string | null = read(REFRESH);
+  private refreshing: Promise<string> | null = null;
   readonly user = signal<User | null>(null);
   readonly loggedIn = computed(() => !!this.token());
 
@@ -68,12 +71,40 @@ export class Auth {
     return list;
   }
 
-  logout(navigate = true) {
+  get canRefresh(): boolean {
+    return !!this.refreshToken;
+  }
+
+  /**
+   * Troca o refresh token por um novo par (rotação). Chamadas concorrentes dividem
+   * a mesma requisição; se falhar, quem chamou decide sair da sessão.
+   */
+  refresh(): Promise<string> {
+    if (!this.refreshToken) return Promise.reject(new Error('sem refresh token'));
+    this.refreshing ??= firstValueFrom(
+      this.http.post<AuthResponse>(`${API_BASE}/auth/refresh`, { refreshToken: this.refreshToken }),
+    )
+      .then((res) => {
+        this.save(res);
+        return res.token;
+      })
+      .finally(() => (this.refreshing = null));
+    return this.refreshing;
+  }
+
+  /** `revoke`: avisa o servidor para invalidar o refresh token (não faz sentido se ele já foi recusado). */
+  logout(navigate = true, revoke = true) {
+    const refreshToken = this.refreshToken;
+    if (revoke && refreshToken && this.token()) {
+      this.http.post(`${API_BASE}/auth/logout`, { refreshToken }).subscribe({ error: () => undefined });
+    }
+    this.refreshToken = null;
     this.token.set(null);
     this.user.set(null);
     this.store.clear();
     try {
       localStorage.removeItem(TOKEN);
+      localStorage.removeItem(REFRESH);
     } catch {
       /* ignore */
     }
@@ -81,19 +112,25 @@ export class Auth {
   }
 
   private start(res: AuthResponse) {
-    this.token.set(res.token);
     this.user.set(res.user);
+    this.save(res);
+  }
+
+  private save(res: AuthResponse) {
+    this.token.set(res.token);
+    if (res.refreshToken) this.refreshToken = res.refreshToken;
     try {
       localStorage.setItem(TOKEN, res.token);
+      if (res.refreshToken) localStorage.setItem(REFRESH, res.refreshToken);
     } catch {
       /* ignore */
     }
   }
 }
 
-function readToken(): string | null {
+function read(key: string): string | null {
   try {
-    return localStorage.getItem(TOKEN);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
