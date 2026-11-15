@@ -54,6 +54,14 @@ export class EpisodeCardPage {
         });
     }
 
+    /** Marcas da rivalidade na luta: começa / encerra (com ganhador) / reconhecida. */
+    protected rivalryLabel(s: Segment): string {
+        if (!s.rivalry) return '';
+        if (s.startsRivalry) return `Começa rivalidade: ${s.rivalry.name}`;
+        if (s.endsRivalry) return `Encerra rivalidade: ${s.rivalry.name}`;
+        return `Rivalidade: ${s.rivalry.name}`;
+    }
+
     protected async load() {
         this.loading.set(true);
         try {

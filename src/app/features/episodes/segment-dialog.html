@@ -48,6 +48,41 @@
                 }
             </div>
 
+            @if (isMatch()) {
+                <div class="col-span-12 rounded-xl border border-surface-200 dark:border-surface-700 p-3 flex flex-col gap-3">
+                    <div class="font-medium"><i class="pi pi-bolt mr-2 text-primary"></i>Rivalidade</div>
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center gap-3">
+                            <p-toggleswitch formControlName="startsRivalry" inputId="sr" />
+                            <label for="sr">Esta luta começa uma rivalidade</label>
+                        </div>
+                        <small class="text-muted-color">
+                            A rivalidade é criada sozinha com os lados da luta (dupla ou facção completa conta como um envolvido só). Pode começar numa luta de título ou de subida de ranking.
+                        </small>
+                        @if (data.segment?.startsRivalry && data.segment.rivalry; as rv) {
+                            <small class="text-primary"><i class="pi pi-link mr-1"></i>Rivalidade: {{ rv.name }}</small>
+                        }
+                    </div>
+                    @if (rivalryOptions().length) {
+                        <div class="flex flex-col gap-2">
+                            <div class="flex items-center gap-3">
+                                <p-toggleswitch formControlName="endsRivalry" inputId="er" />
+                                <label for="er">Encerrar rivalidade nesta luta</label>
+                            </div>
+                            @if (endsRivalry()) {
+                                <p-select formControlName="rivalryId" [options]="rivalryOptions()" optionLabel="label" optionValue="value" placeholder="Qual rivalidade?" appendTo="body" fluid />
+                                @if (rivalryMissing()) {
+                                    <small class="text-red-500">Escolha a rivalidade que será encerrada.</small>
+                                }
+                            }
+                            <small class="text-muted-color">
+                                Rivalidade reconhecida nesta luta. Ao finalizar a luta com vencedor, o lado vencedor fica como ganhador da rivalidade (empate encerra sem ganhador). Pode encerrar numa luta de título ou de subida de ranking.
+                            </small>
+                        </div>
+                    }
+                </div>
+            }
+
             <div class="col-span-12 flex flex-wrap gap-x-8 gap-y-3">
                 @if (isMatch() && hasTitle()) {
                     <div class="flex flex-col gap-1">
@@ -111,7 +146,7 @@
 
         <div class="flex justify-end gap-2 mt-6">
             <p-button type="button" label="Cancelar" severity="secondary" text (onClick)="ref.close()" />
-            <p-button type="submit" label="Salvar" icon="pi pi-check" [loading]="busy()" [disabled]="form.invalid || !!problem() || (hasStakes() && !form.value.cardDivisionId)" />
+            <p-button type="submit" label="Salvar" icon="pi pi-check" [loading]="busy()" [disabled]="form.invalid || !!problem() || rivalryMissing() || (hasStakes() && !form.value.cardDivisionId)" />
         </div>
     </form>
 }

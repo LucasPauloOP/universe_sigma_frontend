@@ -90,6 +90,32 @@ export interface Resource {
 const opts = (m: Record<string, string>): Option[] =>
   Object.entries(m).map(([value, label]) => ({ value, label }));
 
+/** Lado vencedor da rivalidade (A = 1, B = 2). */
+export const RIVALRY_WINNER: Option[] = [
+  { value: '1', label: 'Lado A' },
+  { value: '2', label: 'Lado B' },
+];
+
+const rivalryUnit = (m: Entity): string => m['wrestler']?.name ?? m['team']?.name ?? '?';
+
+/** Envolvidos por lado (A, B...): lista de nomes de cada lado, na ordem dos lados. */
+export const rivalrySides = (e: Entity): string[][] => {
+  const members: Entity[] = e['members'] ?? [];
+  return [...new Set(members.map((m) => m['side'] as number))]
+    .sort((a, b) => a - b)
+    .map((side) => members.filter((m) => m['side'] === side).map(rivalryUnit));
+};
+
+/** Ganhador (nomes do lado vencedor) ou '' se não há. */
+export const rivalryWinner = (e: Entity): string => {
+  const side = e['winnerSide'];
+  if (!side) return '';
+  return ((e['members'] ?? []) as Entity[]).filter((m) => m['side'] === side).map(rivalryUnit).join(' & ');
+};
+
+const rivalryIds = (e: Entity, side: number, key: 'wrestlerId' | 'teamId'): string[] =>
+  ((e['members'] ?? []) as Entity[]).filter((m) => m['side'] === side && m[key]).map((m) => m[key] as string);
+
 export const GENDER = opts({ M: 'Masculino', W: 'Feminino' });
 export const CONTRACT = opts({
   FULL_TIME: 'Full time',
@@ -268,18 +294,24 @@ export const RESOURCES: Record<string, Resource> = {
   },
 
   rivalries: {
-    key: 'rivalries', singular: 'Rivalidade', plural: 'Rivalidades', icon: 'bolt', group: 'Roster',
+    key: 'rivalries', singular: 'Rivalidade', plural: 'Rivalidades', icon: 'bolt', group: 'Shows',
     label: byName, filters: ['isActive'],
     columns: [
-      { key: 'name', label: 'Nome' },
-      { key: 'members', label: 'Envolvidos', type: 'chips', render: (e) => (e['members'] ?? []).map((m: Entity) => m['wrestler']?.name).join('|') },
+      { key: 'name', label: 'Rivalidade' },
+      { key: 'status', label: 'Situação', render: (e) => (e['isActive'] ? 'Em andamento' : 'Encerrada'), sortValue: (e) => (e['isActive'] ? 0 : 1) },
+      { key: 'sides', label: 'Lados', render: (e) => rivalrySides(e).map((s) => s.join(' & ')).join(' vs '), sortValue: (e) => rivalrySides(e).join('|') },
+      { key: 'winner', label: 'Ganhador', render: (e) => rivalryWinner(e), sortValue: (e) => rivalryWinner(e) },
       { key: 'startDate', label: 'Início', render: (e) => fmtDate(e['startDate']), sortValue: (e) => e['startDate'] ?? '' },
       { key: 'endDate', label: 'Fim', render: (e) => fmtDate(e['endDate']), sortValue: (e) => e['endDate'] ?? '' },
       { key: 'isActive', label: 'Ativa', type: 'bool' },
     ],
     fields: [
       name(),
-      { key: 'wrestlerIds', label: 'Envolvidos', type: 'refMulti', ref: 'wrestlers', full: true, default: [], fromEntity: (e) => (e['members'] ?? []).map((m: Entity) => m['wrestlerId']) },
+      { key: 'sideAWrestlerIds', label: 'Lado A: lutadores', type: 'refMulti', ref: 'wrestlers', full: true, default: [], fromEntity: (e) => rivalryIds(e, 1, 'wrestlerId') },
+      { key: 'sideATeamIds', label: 'Lado A: duplas e facções', type: 'refMulti', ref: 'teams', full: true, default: [], fromEntity: (e) => rivalryIds(e, 1, 'teamId') },
+      { key: 'sideBWrestlerIds', label: 'Lado B: lutadores', type: 'refMulti', ref: 'wrestlers', full: true, default: [], fromEntity: (e) => rivalryIds(e, 2, 'wrestlerId') },
+      { key: 'sideBTeamIds', label: 'Lado B: duplas e facções', type: 'refMulti', ref: 'teams', full: true, default: [], fromEntity: (e) => rivalryIds(e, 2, 'teamId') },
+      { key: 'winnerSide', label: 'Ganhador', type: 'select', options: RIVALRY_WINNER, fromEntity: (e) => (e['winnerSide'] ? String(e['winnerSide']) : null), toBody: (v) => (v ? Number(v) : null), hint: 'Preenchido sozinho quando a luta que encerra a rivalidade é finalizada com vencedor' },
       dateField('startDate', 'Início'), dateField('endDate', 'Fim'),
       { ...isActive, label: 'Ativa' }, description,
     ],
