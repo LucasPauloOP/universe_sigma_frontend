@@ -12,6 +12,7 @@ import { Api } from '../../core/api';
 import { Participant, Segment } from '../../core/models';
 import { resultProblem } from '../../core/segment-result';
 import { roundTitle } from '../../core/format';
+import { DivisionRanking } from './division-ranking';
 import { Refs } from '../../core/refs';
 import { FINISH_TYPE, RESOURCES, SEGMENT_TYPE } from '../../core/resources';
 
@@ -36,13 +37,15 @@ interface TMatch {
 export interface SegmentDialogData {
     episodeId: string;
     segment?: Segment;
+    /** marca do show do episódio: o ranking abre já nela */
+    brandId?: string | null;
     /** abre já com "Realizado" marcado (vindo do checkbox do card) */
     markDone?: boolean;
 }
 
 @Component({
     selector: 'app-segment-dialog',
-    imports: [ReactiveFormsModule, FormsModule, ButtonModule, ProgressSpinnerModule, SelectModule, TextareaModule, ToggleSwitchModule],
+    imports: [DivisionRanking, ReactiveFormsModule, FormsModule, ButtonModule, ProgressSpinnerModule, SelectModule, TextareaModule, ToggleSwitchModule],
     templateUrl: './segment-dialog.html'
 })
 export class SegmentDialog {
@@ -106,6 +109,10 @@ export class SegmentDialog {
         });
         void Promise.all([this.refs.loadMany(['wrestlers', 'match-types', 'titles', 'card-divisions']), this.api.get<TMatch[]>('tournaments/open-matches').then((m) => this.openMatches.set(m)).catch(() => [])]).then(() => this.ready.set(true));
     }
+
+    protected readonly rankingOpen = signal(false);
+    /** Lutadores já escalados neste segmento (destacados no ranking). */
+    protected readonly scheduled = computed(() => new Set(this.participants().map((p) => p.wrestlerId)));
 
     protected readonly matchTypes = computed(() => (this.refs.version(), this.refs.list('match-types').map((e) => ({ value: e.id, label: e['name'] as string }))));
     protected readonly divisionOptions = computed(() => (this.refs.version(), this.refs.list('card-divisions').map((e) => ({ value: e.id, label: RESOURCES['card-divisions'].label(e) }))));
